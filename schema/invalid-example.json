@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "glow-farm-tx-042",
+  "source_platform": "glow",
+  "asset_class": "solar-depin",
+  "name": "Glow Solar Farm TX-042 (Uvalde County, TX)",
+  "description_text": "Deliberately broken copy of the Glow example used to test schema rejection.",
+  "source_url": "https://glow.org/farms/tx-042",
+  "data_pulled_at": "2026-08-10T09:15:00Z",
+  "retrieval_method": "onchain-direct-query",
+  "payout_mechanism": {
+    "payout_mechanism_type": "token-emission-reward",
+    "payout_currency": "native-protocol-token",
+    "payout_frequency": "weekly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": 18.5,
+    "realized_yield_pct": 14.2,
+    "yield_calculation_basis": "Annualized from 22 weeks of observed GLW reward emissions to this farm's delegators."
+  },
+  "verification": {
+    "verification_tier": "trust-me-bro",
+    "verification_notes": "Invalid enum value used intentionally for the negative test case."
+  },
+  "maturity": {
+    "protocol_age_months": 30,
+    "protocol_age_months_unknown_reason": null,
+    "asset_age_months": 7,
+    "asset_age_months_unknown_reason": null,
+    "completed_payout_cycles": 22,
+    "completed_payout_cycles_unknown_reason": null,
+    "protocol_version": "Glow V2"
+  },
+  "liquidity": {
+    "exit_type": "fixed-lockup",
+    "lockup_period_weeks": 100,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": 700,
+    "estimated_time_to_exit_days_unknown_reason": null
+  },
+  "regulatory": {
+    "regulatory_wrapper": "unregistered-onchain-token",
+    "accreditation_required": false,
+    "restricted_jurisdictions": ["US"],
+    "permitted_jurisdictions": []
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "Glow Farm ID TX-042",
+    "operator_name": "Uvalde Solar Partners LLC",
+    "operator_track_record_notes": "First farm operated by this entity within the Glow network."
+  }
+}

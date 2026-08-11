@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "glow-farm-tx-042",
+  "source_platform": "glow",
+  "asset_class": "solar-depin",
+  "name": "Glow Solar Farm TX-042 (Uvalde County, TX)",
+  "description_text": "A 4.2 MW community solar farm in Uvalde County, Texas, financed via GLW token delegation under the Glow Protocol's 100-week reward vesting program. 100% of electricity revenue from the farm flows to Glow's shared revenue pool; financers who delegated GLW to this farm earn GLW token rewards over the vesting window, not a direct cash cut of the farm's electricity sales.",
+  "source_url": "https://glow.org/farms/tx-042",
+  "data_pulled_at": "2026-08-10T09:15:00Z",
+  "retrieval_method": "onchain-direct-query",
+  "payout_mechanism": {
+    "payout_mechanism_type": "token-emission-reward",
+    "payout_currency": "native-protocol-token",
+    "payout_frequency": "weekly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": 18.5,
+    "realized_yield_pct": 14.2,
+    "yield_calculation_basis": "Annualized from 22 weeks of observed GLW reward emissions to this farm's delegators, valued at the GLW/USD spot price on each distribution date, divided by the USD-equivalent value of the delegated GLW at the time of delegation.",
+    "yield_last_computed_at": "2026-08-09T00:00:00Z"
+  },
+  "verification": {
+    "verification_tier": "cryptographic-onchain-proof",
+    "verification_notes": "Electricity output is verified via satellite and AI imagery analysis under Glow's Proof of Physical Work protocol; resulting GLW reward issuance is executed on-chain and independently queryable by anyone."
+  },
+  "maturity": {
+    "protocol_age_months": 30,
+    "protocol_age_months_unknown_reason": null,
+    "asset_age_months": 7,
+    "asset_age_months_unknown_reason": null,
+    "completed_payout_cycles": 22,
+    "completed_payout_cycles_unknown_reason": null,
+    "protocol_version": "Glow V2"
+  },
+  "liquidity": {
+    "exit_type": "fixed-lockup",
+    "lockup_period_weeks": 100,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": 700,
+    "estimated_time_to_exit_days_unknown_reason": null
+  },
+  "regulatory": {
+    "regulatory_wrapper": "unregistered-onchain-token",
+    "accreditation_required": false,
+    "restricted_jurisdictions": ["US"],
+    "permitted_jurisdictions": []
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "Glow Farm ID TX-042",
+    "operator_name": "Uvalde Solar Partners LLC",
+    "operator_track_record_notes": "First farm operated by this entity within the Glow network; no prior Glow farms to reference for this specific operator."
+  }
+}

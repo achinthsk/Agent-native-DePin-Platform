@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "elmnts-chevron-land-fund-01",
+  "source_platform": "elmnts",
+  "asset_class": "oil-gas-royalty",
+  "name": "Elmnts Chevron-Land Mineral Rights Fund I",
+  "description_text": "A fractional interest in producing oil and gas mineral rights located on land under Chevron operatorship, tokenized as a Reg D 506(c) security and offered to accredited investors, with income tied to metered production.",
+  "source_url": "https://elmnts.io/assets/chevron-land-fund-01",
+  "data_pulled_at": "2026-08-10T09:20:00Z",
+  "retrieval_method": "public-api",
+  "payout_mechanism": {
+    "payout_mechanism_type": "direct-revenue-share",
+    "payout_currency": "stablecoin",
+    "payout_frequency": "monthly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": 11.0,
+    "realized_yield_pct": null,
+    "yield_calculation_basis": "Advertised figure is Elmnts' published target distribution rate, based on the operator's projected well production for this tranche. No realized figure exists yet because fewer than one full monthly distribution cycle has completed since this tranche opened.",
+    "yield_last_computed_at": "2026-08-01T00:00:00Z"
+  },
+  "verification": {
+    "verification_tier": "self-reported-unverified",
+    "verification_notes": "This is a Reg D 506(c) offering; production volumes are metered by the well operator and reported to Elmnts by the operator, but as of this data pull there is no publicly documented independent third-party audit or on-chain-verifiable proof of those production figures. Classified self-reported-unverified rather than independent-third-party-audit pending public evidence of an independent audit process; this should be revisited if Elmnts publishes audit documentation."
+  },
+  "maturity": {
+    "protocol_age_months": 14,
+    "protocol_age_months_unknown_reason": null,
+    "asset_age_months": 1,
+    "asset_age_months_unknown_reason": null,
+    "completed_payout_cycles": 0,
+    "completed_payout_cycles_unknown_reason": null
+  },
+  "liquidity": {
+    "exit_type": "illiquid-broker-required",
+    "lockup_period_weeks": null,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": 45,
+    "estimated_time_to_exit_days_unknown_reason": null
+  },
+  "regulatory": {
+    "regulatory_wrapper": "reg-d-506c",
+    "accreditation_required": true,
+    "restricted_jurisdictions": [],
+    "permitted_jurisdictions": ["US"]
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "Chevron-operated mineral rights parcel, Permian Basin fund tranche 1",
+    "operator_name": "Chevron U.S.A. Inc.",
+    "operator_track_record_notes": "Operator is a major integrated oil company with a multi-decade production history; this specific fund tranche itself has zero completed payout cycles to date."
+  }
+}
