@@ -1,1 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/asset-v1.schema.json",
+  "title": "Normalized Fractional-Ownership Asset Schema",
+  "x-schema-semver": "1.0.0",
+  "$comment": "Schema semantic version 1.0.0. This file represents major version 1 of the schema; instances declare their schema_version and must match this file's major version. This schema stores only observed/reported facts about an asset. It intentionally contains no risk score, yield score, or composite rating field — scoring is computed downstream by a separate service that reads validated instances of this schema.",
+  "description": "A source-agnostic representation of a single fractional-ownership / revenue-share position in a physical-infrastructure asset (tokenized solar, oil & gas royalties, regulated funds/credit, etc.), designed so an AI agent can compare positions pulled from structurally different source platforms without silently conflating incompatible concepts (e.g. a token-emission reward vs. a direct cash revenue share, or a marketed yield vs. a realized one).",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+\\.\\d+$",
+      "description": "The semantic version of this schema that the instance conforms to. Pinned to major version 1 in this file. Required so that as the schema evolves, older instances remain unambiguously parseable by a downstream consumer that knows which shape to expect, instead of guessing which schema revision produced a given document."
+    },
+    "asset_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A stable identifier for this specific asset (e.g. one particular Glow solar farm or one particular Elmnts fund tranche), not for the source platform generally. Required because comparisons and score history must be tracked per-asset, not per-platform; conflating 'Glow' with 'this one farm on Glow' would make cross-time or cross-asset comparison meaningless."
+    },
+    "source_platform": {
+      "type": "string",
+      "enum": ["glow", "elmnts", "ixs"],
+      "description": "Which underlying source platform this data was pulled from. A closed enum (not free text) so downstream tooling can branch on platform-specific quirks reliably. New platforms are added by incrementing this schema's minor version, never by accepting arbitrary strings here."
+    },
+    "asset_class": {
+      "type": "string",
+      "enum": ["solar-depin", "oil-gas-royalty", "regulated-fund", "regulated-credit"],
+      "description": "The real-world category of the underlying asset, independent of which source platform it came from. Required so that, e.g., two oil-and-gas royalty positions can be compared to each other directly even if one came from Elmnts and a future one came from a different platform, rather than comparisons being locked to source_platform."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human- and agent-readable name of the asset. Identification only; must not encode any judgment call (e.g. no 'high-yield' or 'safe' in the name) since categorical claims belong in the closed-enum fields below, not in free text."
+    },
+    "description_text": {
+      "type": "string",
+      "description": "Human- and agent-readable free-text description of what this asset is. Identification/context only. This field, and the per-section 'notes' fields, are the only places unstructured text is permitted in this schema; no judgment-call field (verification quality, payout mechanism, liquidity type, exposure type, regulatory status) may be described only here."
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL this data was pulled from. Required for auditability, so a downstream consumer or human reviewer can trace any field in this instance back to its origin rather than trusting the instance blindly."
+    },
+    "data_pulled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp (ISO 8601) of when this specific instance was retrieved. Required, never optional: DePIN and tokenized-asset data moves fast, and an instance without a freshness timestamp cannot be trusted by a downstream consumer to still be accurate, no matter how complete its other fields are."
+    },
+    "retrieval_method": {
+      "type": "string",
+      "enum": ["onchain-direct-query", "public-api", "manual-entry"],
+      "description": "How this data was obtained. Required and closed-enum because on-chain-direct data, API data, and manually-entered data carry structurally different trust levels even before any scoring is applied — this field lets a downstream consumer see that difference instead of it being invisibly flattened."
+    },
+    "payout_mechanism": { "$ref": "#/$defs/payoutMechanism" },
+    "yield_profile": { "$ref": "#/$defs/yieldProfile" },
+    "verification": { "$ref": "#/$defs/verification" },
+    "maturity": { "$ref": "#/$defs/maturity" },
+    "liquidity": { "$ref": "#/$defs/liquidity" },
+    "regulatory": { "$ref": "#/$defs/regulatory" },
+    "exposure": { "$ref": "#/$defs/exposure" }
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "source_platform",
+    "asset_class",
+    "name",
+    "description_text",
+    "source_url",
+    "data_pulled_at",
+    "retrieval_method",
+    "payout_mechanism",
+    "yield_profile",
+    "verification",
+    "maturity",
+    "liquidity",
+    "regulatory",
+    "exposure"
+  ],
+  "additionalProperties": false,
+
+  "$defs": {
+
+    "payoutMechanism": {
+      "type": "object",
+      "description": "How this asset actually pays the holder, and in what form. This is the single most important section in the schema: a token-emission-reward instrument (e.g. Glow) and a direct-revenue-share instrument (e.g. Elmnts) are not comparable as raw percentages, and collapsing them into one undifferentiated 'yield' number is the specific mistake this section exists to prevent.",
+      "properties": {
+        "payout_mechanism_type": {
+          "type": "string",
+          "enum": ["direct-revenue-share", "token-emission-reward", "fixed-interest", "price-appreciation-only", "unverifiable"],
+          "description": "The structural mechanism by which the holder is paid. Required, no default: 'direct-revenue-share' means the holder receives a cut of actual revenue from the underlying asset; 'token-emission-reward' means the holder receives protocol-token issuance that is not a direct claim on revenue; 'fixed-interest' means a conventional interest schedule; 'price-appreciation-only' means there is no periodic payout at all. Use 'unverifiable' only when the source does not disclose this — never guess or default to the most common category."
+        },
+        "payout_currency": {
+          "type": "string",
+          "enum": ["native-protocol-token", "stablecoin", "fiat", "unverifiable"],
+          "description": "The form in which the holder actually receives payouts. Required because a token-denominated reward carries market-price risk that a stablecoin or fiat payout does not, even if the advertised percentage is identical — this field lets that risk stay visible instead of being hidden inside a single yield number."
+        },
+        "payout_frequency": {
+          "type": "string",
+          "enum": ["continuous", "weekly", "monthly", "at-maturity", "irregular", "unverifiable"],
+          "description": "How often payouts occur. Required and closed-enum so payout cadence (which affects effective liquidity and compounding) is comparable across assets without parsing free-text schedules."
+        }
+      },
+      "required": ["payout_mechanism_type", "payout_currency", "payout_frequency"],
+      "additionalProperties": false
+    },
+
+    "yieldProfile": {
+      "type": "object",
+      "description": "Performance and payout-rate data for this asset. Advertised and realized figures are tracked as two separate required fields and must never be merged into a single 'yield' number, because a marketed rate and an actual observed payout rate answer different questions, and merging them lets optimistic marketing figures masquerade as track record.",
+      "properties": {
+        "advertised_yield_pct": {
+          "type": ["number", "null"],
+          "description": "The yield percentage the source platform publishes or markets for this asset, taken at face value from their own materials. Present so a downstream consumer can see what is being marketed, but must never be treated as, or silently substituted for, actual performance."
+        },
+        "realized_yield_pct": {
+          "type": ["number", "null"],
+          "description": "The actual historical payout percentage computed from observed data for this specific asset, independent of marketing copy. Explicitly null (never omitted) when the asset is too new to have a track record, so a downstream consumer can distinguish 'no data yet' from 'zero return' instead of guessing."
+        },
+        "yield_calculation_basis": {
+          "type": ["string", "null"],
+          "description": "Plain-language explanation of how advertised_yield_pct and/or realized_yield_pct were derived (e.g. 'annualized from 12 weeks of observed GLW rewards vs. USD delegation cost'). Required to be a non-null, non-empty string whenever either yield figure is non-null, because a bare percentage without its calculation method cannot be compared apples-to-apples against a percentage computed a different way. May be null only when both yield figures are null."
+        },
+        "yield_last_computed_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when the yield figures above were last calculated. Required to be non-null whenever either yield figure is non-null, since a stale yield calculation on a fast-moving tokenized-asset market can be materially misleading if its age is invisible."
+        }
+      },
+      "required": ["advertised_yield_pct", "realized_yield_pct", "yield_calculation_basis", "yield_last_computed_at"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              { "properties": { "advertised_yield_pct": { "not": { "type": "null" } } }, "required": ["advertised_yield_pct"] },
+              { "properties": { "realized_yield_pct": { "not": { "type": "null" } } }, "required": ["realized_yield_pct"] }
+            ]
+          },
+          "then": {
+            "properties": {
+              "yield_calculation_basis": { "type": "string", "minLength": 1 },
+              "yield_last_computed_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      ]
+    },
+
+    "verification": {
+      "type": "object",
+      "description": "How the underlying facts about this asset (output, production, revenue) are verified. This is the platform's fraud/trust-risk proxy: data self-reported by the asset issuer must never be silently displayed with the same apparent authority as independently audited or on-chain-verifiable data.",
+      "properties": {
+        "verification_tier": {
+          "type": "string",
+          "enum": ["independent-third-party-audit", "cryptographic-onchain-proof", "remote-sensing-verified", "self-reported-unverified"],
+          "description": "Required, closed enum. Ranked implicitly from strongest to weakest independent evidence: an independent third-party audit or a cryptographic on-chain proof is verifiable without trusting the issuer; remote-sensing verification (e.g. satellite/AI imagery of physical output) is independent but interpretive; self-reported-unverified means the only source of the underlying facts is the issuer itself. When no independent verification exists, this must be set to self-reported-unverified rather than left ambiguous."
+        },
+        "verification_notes": {
+          "type": "string",
+          "description": "Optional brief factual note on the verification method actually used (e.g. 'satellite + AI imagery of panel output', or reasoning for why a particular tier was chosen). Factual only — no scoring or persuasive language."
+        }
+      },
+      "required": ["verification_tier"],
+      "additionalProperties": false
+    },
+
+    "maturity": {
+      "type": "object",
+      "description": "Track-record data distinguishing platform-level maturity from this specific asset's own maturity. 'The protocol is 2 years old' and 'this specific farm has paid out twice' are different facts, and only the second tells you whether this particular asset has actually delivered.",
+      "properties": {
+        "protocol_age_months": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "How long the underlying protocol/platform (e.g. Glow, Elmnts, IXS as a whole) has existed, in months. Null only when genuinely unpublished, paired with protocol_age_months_unknown_reason."
+        },
+        "protocol_age_months_unknown_reason": {
+          "type": ["string", "null"],
+          "description": "Required non-null explanation whenever protocol_age_months is null, so an unknown platform age is never silently indistinguishable from a brand-new platform."
+        },
+        "asset_age_months": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "How long this specific asset (not the platform) has existed, in months. Null only when genuinely unpublished, paired with asset_age_months_unknown_reason."
+        },
+        "asset_age_months_unknown_reason": {
+          "type": ["string", "null"],
+          "description": "Required non-null explanation whenever asset_age_months is null."
+        },
+        "completed_payout_cycles": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Number of full payout cycles actually observed for this specific asset, not the platform generally. This is the field that tells a downstream consumer whether the asset has actually delivered a payout, as opposed to merely existing on a mature platform. Null only when genuinely unpublished, paired with completed_payout_cycles_unknown_reason."
+        },
+        "completed_payout_cycles_unknown_reason": {
+          "type": ["string", "null"],
+          "description": "Required non-null explanation whenever completed_payout_cycles is null."
+        },
+        "protocol_version": {
+          "type": "string",
+          "description": "Optional platform/protocol version label (e.g. 'Glow V2'), since a version change can materially alter payout mechanics. Omit entirely if not applicable or unknown; this field is not required."
+        }
+      },
+      "required": [
+        "protocol_age_months", "protocol_age_months_unknown_reason",
+        "asset_age_months", "asset_age_months_unknown_reason",
+        "completed_payout_cycles", "completed_payout_cycles_unknown_reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "protocol_age_months": { "type": "null" } }, "required": ["protocol_age_months"] },
+          "then": { "properties": { "protocol_age_months_unknown_reason": { "type": "string", "minLength": 1 } }, "required": ["protocol_age_months_unknown_reason"] }
+        },
+        {
+          "if": { "properties": { "asset_age_months": { "type": "null" } }, "required": ["asset_age_months"] },
+          "then": { "properties": { "asset_age_months_unknown_reason": { "type": "string", "minLength": 1 } }, "required": ["asset_age_months_unknown_reason"] }
+        },
+        {
+          "if": { "properties": { "completed_payout_cycles": { "type": "null" } }, "required": ["completed_payout_cycles"] },
+          "then": { "properties": { "completed_payout_cycles_unknown_reason": { "type": "string", "minLength": 1 } }, "required": ["completed_payout_cycles_unknown_reason"] }
+        }
+      ]
+    },
+
+    "liquidity": {
+      "type": "object",
+      "description": "How, and how quickly, a holder can actually convert this position back to cash.",
+      "properties": {
+        "exit_type": {
+          "type": "string",
+          "enum": ["open-market-tradeable", "fixed-lockup", "illiquid-broker-required", "unverifiable"],
+          "description": "Required, closed enum. The contractual/structural exit mechanism for this position, kept separate from any judgment about how fast that exit actually is in practice (see estimated_time_to_exit_days)."
+        },
+        "lockup_period_weeks": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Contractual lockup duration in weeks. Required to be a real value (or explicitly null with a reason) whenever exit_type is fixed-lockup, so a lockup asset can never silently omit how long the holder is actually locked in."
+        },
+        "lockup_period_weeks_unknown_reason": {
+          "type": ["string", "null"],
+          "description": "Required non-null explanation whenever exit_type is fixed-lockup and lockup_period_weeks is null."
+        },
+        "estimated_time_to_exit_days": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Best real-world estimate of how many days it would take to convert this position back to cash, independent of contractual lockup — e.g. a technically-tradeable token in a thin market may still take days to sell at a fair price. Null only when genuinely unestimable, paired with estimated_time_to_exit_days_unknown_reason."
+        },
+        "estimated_time_to_exit_days_unknown_reason": {
+          "type": ["string", "null"],
+          "description": "Required non-null explanation whenever estimated_time_to_exit_days is null."
+        }
+      },
+      "required": ["exit_type", "lockup_period_weeks", "lockup_period_weeks_unknown_reason", "estimated_time_to_exit_days", "estimated_time_to_exit_days_unknown_reason"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "exit_type": { "const": "fixed-lockup" }, "lockup_period_weeks": { "type": "null" } },
+            "required": ["exit_type", "lockup_period_weeks"]
+          },
+          "then": { "properties": { "lockup_period_weeks_unknown_reason": { "type": "string", "minLength": 1 } }, "required": ["lockup_period_weeks_unknown_reason"] }
+        },
+        {
+          "if": { "properties": { "estimated_time_to_exit_days": { "type": "null" } }, "required": ["estimated_time_to_exit_days"] },
+          "then": { "properties": { "estimated_time_to_exit_days_unknown_reason": { "type": "string", "minLength": 1 } }, "required": ["estimated_time_to_exit_days_unknown_reason"] }
+        }
+      ]
+    },
+
+    "regulatory": {
+      "type": "object",
+      "description": "The regulatory wrapper this position is issued under, and who is legally permitted to hold it. Required so an agent never recommends a position to a holder who is legally barred from taking it.",
+      "properties": {
+        "regulatory_wrapper": {
+          "type": "string",
+          "enum": ["unregistered-onchain-token", "reg-d-506c", "reg-cf", "reg-a", "licensed-fund-vault", "unverifiable"],
+          "description": "Required, closed enum. The legal wrapper the position is issued under. This directly determines who can legally hold the position and what recourse they have, so it cannot be inferred from source_platform alone (the same platform can issue under different wrappers for different assets)."
+        },
+        "accreditation_required": {
+          "type": "boolean",
+          "description": "Required. Whether the holder must be an accredited (or equivalent) investor to legally hold this position, independent of the regulatory_wrapper enum value, since accreditation rules can vary within a single wrapper category across jurisdictions."
+        },
+        "restricted_jurisdictions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/isoCountryCode" },
+          "description": "ISO 3166-1 alpha-2 country codes explicitly barred from holding this position. Required (may be an empty array). If this array and permitted_jurisdictions are both empty, that combination must be treated by any downstream consumer as 'jurisdictional eligibility is unknown', never as 'unrestricted worldwide' — an absence of stated restrictions is not evidence of none existing."
+        },
+        "permitted_jurisdictions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/isoCountryCode" },
+          "description": "ISO 3166-1 alpha-2 country codes explicitly confirmed as eligible to hold this position. Required (may be an empty array). Same rule as restricted_jurisdictions: both arrays empty means 'unknown', not 'unrestricted'."
+        }
+      },
+      "required": ["regulatory_wrapper", "accreditation_required", "restricted_jurisdictions", "permitted_jurisdictions"],
+      "additionalProperties": false
+    },
+
+    "exposure": {
+      "type": "object",
+      "description": "What single underlying thing (or pool of things) this position's economics actually depend on, and who operates it.",
+      "properties": {
+        "exposure_type": {
+          "type": "string",
+          "enum": ["single-asset", "pooled-diversified", "unverifiable"],
+          "description": "Required, closed enum. Whether the payout depends on one specific underlying asset (concentrated counterparty/operational risk) or a diversified pool (spread risk). This must be a structured field, not inferred from prose, so downstream comparison of concentration risk is reliable."
+        },
+        "underlying_reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What specifically this position is exposed to — e.g. a specific farm ID, well ID, or 'network-wide pool'. Required so single-asset exposure claims are checkable against a concrete referent rather than a vague description."
+        },
+        "operator_name": {
+          "type": ["string", "null"],
+          "description": "Name of the entity operating the underlying asset, if known. Null (not omitted) when the operator is unnamed or unknown, so a downstream consumer can see that operator identity itself is a gap rather than assuming it was simply not asked for."
+        },
+        "operator_track_record_notes": {
+          "type": "string",
+          "description": "Optional, strictly factual notes on the operator's track record (e.g. how many other assets they operate, how long they've operated them). No scoring or persuasive language — factual observations only, comparable to the notes field elsewhere in this schema."
+        }
+      },
+      "required": ["exposure_type", "underlying_reference", "operator_name"],
+      "additionalProperties": false
+    },
+
+    "isoCountryCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "ISO 3166-1 alpha-2 two-letter country code."
+    }
+  }
+}
 
