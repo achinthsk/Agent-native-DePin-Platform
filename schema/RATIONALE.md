@@ -1,9 +1,30 @@
-# Rationale: Normalized Asset Schema (v1.0.0)
+# Rationale: Normalized Asset Schema (v1.1.0)
 
 This document explains *why* each field in `asset-v1.schema.json` exists,
 and specifically what mistake or blind spot it is designed to prevent when
 an AI agent (not a human) is using this data to compare fractional-ownership
 positions across structurally different platforms.
+
+## v1.1.0 changes
+
+- **`source_platform`**: added `"realt"` so RealT (tokenized U.S. rental real
+  estate / RealTokens) can be identified as a first-class source without
+  overloading another platform label.
+- **`asset_class`**: added `"real-estate-rental"` for fractional interests in
+  individual rental properties (typically LLC series interests delivered as
+  ERC-20 RealTokens) whose economics are net rental income. RealT does **not**
+  fit `regulated-fund` (it is not a pooled fund vehicle in the schema's sense —
+  each property/series is a distinct asset), nor `oil-gas-royalty`,
+  `solar-depin`, or `regulated-credit`. Adding a dedicated enum value avoids
+  miscategorizing RealT into an ill-fitting bucket just to avoid a schema bump.
+  Instances produced against this revision should declare
+  `schema_version: "1.1.0"`. Prior `1.0.x` instances remain valid against this
+  file's major version 1 shape for fields they already used.
+
+---
+
+This schema file began as **v1.0.0**. The sections below are unchanged in
+intent from that release unless noted above.
 
 The schema stores **facts, not scores**. It intentionally contains no
 risk score, yield score, or composite rating field. That kind of judgment
