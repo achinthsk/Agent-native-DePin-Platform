@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Validates the example instances in examples/ against asset-v1.schema.json
-using Draft 2020-12 semantics, and prints a clear PASS/FAIL report.
+Validates example instances in examples/ and every snapshot under ../storage/
+against asset-v1.schema.json using Draft 2020-12 semantics.
 
 Usage:
     python3 validate.py
@@ -14,8 +14,10 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 BASE = Path(__file__).resolve().parent
+REPO_ROOT = BASE.parent
 SCHEMA_PATH = BASE / "asset-v1.schema.json"
 EXAMPLES_DIR = BASE / "examples"
+STORAGE_DIR = REPO_ROOT / "storage"
 
 # Instances that must validate cleanly against the schema.
 SHOULD_PASS = ["glow-example.json", "elmnts-example.json"]
@@ -34,6 +36,11 @@ def describe_error(err) -> str:
     return f"{path}: {err.message}"
 
 
+def validate_one(validator: Draft202012Validator, path: Path) -> list:
+    instance = load(path)
+    return sorted(validator.iter_errors(instance), key=str)
+
+
 def main() -> int:
     schema = load(SCHEMA_PATH)
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
@@ -44,8 +51,8 @@ def main() -> int:
     print("Validating instances that SHOULD PASS")
     print("=" * 70)
     for fname in SHOULD_PASS:
-        instance = load(EXAMPLES_DIR / fname)
-        errors = sorted(validator.iter_errors(instance), key=str)
+        path = EXAMPLES_DIR / fname
+        errors = validate_one(validator, path)
         if not errors:
             print(f"[PASS] {fname} — validated with 0 errors, as expected.")
         else:
@@ -59,8 +66,8 @@ def main() -> int:
     print("Validating instances that SHOULD BE REJECTED")
     print("=" * 70)
     for fname in SHOULD_FAIL:
-        instance = load(EXAMPLES_DIR / fname)
-        errors = sorted(validator.iter_errors(instance), key=str)
+        path = EXAMPLES_DIR / fname
+        errors = validate_one(validator, path)
         if errors:
             print(f"[PASS] {fname} — correctly rejected with {len(errors)} error(s):")
             for e in errors:
@@ -68,6 +75,27 @@ def main() -> int:
         else:
             all_ok = False
             print(f"[FAIL] {fname} — expected rejection, but it validated with 0 errors.")
+
+    print()
+    print("=" * 70)
+    print("Validating live snapshots under storage/")
+    print("=" * 70)
+    if not STORAGE_DIR.exists():
+        print("[WARN] storage/ does not exist yet — nothing to validate.")
+    else:
+        snapshots = sorted(STORAGE_DIR.glob("*/*.json"))
+        if not snapshots:
+            print("[WARN] storage/ has no snapshots yet.")
+        for path in snapshots:
+            rel = path.relative_to(REPO_ROOT)
+            errors = validate_one(validator, path)
+            if not errors:
+                print(f"[PASS] {rel} — validated with 0 errors.")
+            else:
+                all_ok = False
+                print(f"[FAIL] {rel} — {len(errors)} error(s):")
+                for e in errors:
+                    print(f"        - {describe_error(e)}")
 
     print()
     print("=" * 70)

@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "elmnts-chevron-mineral-rights-fund-public-marketing",
+  "source_platform": "elmnts",
+  "asset_class": "oil-gas-royalty",
+  "name": "Elmnts Chevron-operated mineral rights fund (public marketing description)",
+  "description_text": "Manual entry based solely on public press / marketing descriptions of Elmnts' first tokenized mineral-rights fund on Solana (Chevron-operated land royalties), offered as a Reg D 506(c) security to accredited investors. This is NOT a live API pull \u2014 no public unauthenticated Elmnts production/payout endpoint was found (see adapters/FINDINGS.md).",
+  "source_url": "https://decrypt.co/287677/solana-elmnts-tokenized-mineral-rights-platform",
+  "data_pulled_at": "2026-08-11T11:04:46Z",
+  "retrieval_method": "manual-entry",
+  "payout_mechanism": {
+    "payout_mechanism_type": "direct-revenue-share",
+    "payout_currency": "stablecoin",
+    "payout_frequency": "monthly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": null,
+    "realized_yield_pct": null,
+    "yield_calculation_basis": "Press coverage describes 'double-digit' or 'north of 20%' target yields, but those phrases are marketing ranges, not a single numeric advertised_yield_pct published as a stable figure for this tranche, and no realized distribution history is publicly readable without investor login. Both yield fields left null rather than inventing a number.",
+    "yield_last_computed_at": "2026-08-11T11:04:46Z"
+  },
+  "verification": {
+    "verification_tier": "self-reported-unverified",
+    "verification_notes": "Manual entry. No public unauthenticated Elmnts API exposing production or payout data was found (see adapters/FINDINGS.md). Values come from human input / public marketing materials, not from a live programmatic pull."
+  },
+  "maturity": {
+    "protocol_age_months": null,
+    "protocol_age_months_unknown_reason": "Elmnts public launch timing is described in press (beta ~Oct 2024) but a precise protocol-age month count was not confirmed from a primary Elmnts public data source during this manual entry.",
+    "asset_age_months": null,
+    "asset_age_months_unknown_reason": "Specific tranche open date for the Chevron-land fund is not published on a reachable public endpoint.",
+    "completed_payout_cycles": null,
+    "completed_payout_cycles_unknown_reason": "No public payout history API; distribution records require investor-platform access which was not used."
+  },
+  "liquidity": {
+    "exit_type": "illiquid-broker-required",
+    "lockup_period_weeks": null,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": null,
+    "estimated_time_to_exit_days_unknown_reason": "No public secondary-market or redemption timeline published in the marketing materials used for this entry."
+  },
+  "regulatory": {
+    "regulatory_wrapper": "reg-d-506c",
+    "accreditation_required": true,
+    "restricted_jurisdictions": [],
+    "permitted_jurisdictions": [
+      "US"
+    ]
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "Tokenized mineral-rights fund tranche described in public press as Chevron-operated land royalties (Elmnts first offering)",
+    "operator_name": "Chevron U.S.A. Inc.",
+    "operator_track_record_notes": "Operator identity taken from public press describing Elmnts' first fund; this manual entry does not verify operator affiliation on-chain or via Elmnts' investor portal."
+  }
+}
