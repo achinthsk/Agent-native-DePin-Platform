@@ -1,0 +1,173 @@
+# scoring/weights.yaml — external, versioned scoring weights
+# Methodology: scoring/METHODOLOGY.md
+# Every weight below has a one-line reason. Do not hardcode these in engine.py.
+
+version: "1.0.0"
+
+# All numeric scores are on a 0–100 scale where higher is better on that axis.
+# risk_score = risk *quality* (safer ↑), not “more risk.”
+
+yield:
+  # Piecewise-linear map: yield_pct → component points (0–100).
+  # Reason: 0% return is worthless on this axis; ~20%+ annualized is
+  # exceptional for these asset classes and saturates the scale.
+  curve_points:
+    - { pct: 0.0, score: 0.0 }
+    - { pct: 5.0, score: 30.0 }
+    - { pct: 10.0, score: 55.0 }
+    - { pct: 15.0, score: 80.0 }
+    - { pct: 20.0, score: 100.0 }
+
+  # When both advertised and realized exist, realized dominates.
+  # Reason: marketed yield without observation is the exact failure mode
+  # this schema exists to prevent; observed payouts carry more weight.
+  weight_realized: 0.75
+  weight_advertised: 0.25
+
+  # If only advertised exists, heavily discount the mapped score.
+  # Reason: an advertised-only figure is not a track record; treating it
+  # like realized would let marketing masquerade as performance.
+  advertised_only_discount: 0.40
+
+  # Positive gap (advertised − realized) penalty per percentage point of gap.
+  # Reason: overshoot is a trust/quality signal, not noise to average away.
+  # 5pp gap → multiply yield_score by (1 − 0.06*5) = 0.70.
+  gap_penalty_per_pp: 0.06
+
+risk:
+  # verification_tier → points (safer ↑).
+  # Reason: independent / on-chain evidence is structurally safer than
+  # trusting the issuer’s own reports.
+  verification_tier_scores:
+    independent-third-party-audit: 100.0
+    cryptographic-onchain-proof: 90.0
+    remote-sensing-verified: 70.0
+    self-reported-unverified: 25.0
+
+  # Component weights among available risk inputs.
+  # Reason: verification and actual payout history are the strongest
+  # “will this keep delivering / is the story checkable?” signals.
+  weight_verification_tier: 0.30
+  weight_protocol_age: 0.15
+  weight_asset_age: 0.15
+  weight_completed_payout_cycles: 0.25
+  weight_exposure_type: 0.15
+
+  # Age curves (months → points). Null ages omit the component entirely.
+  # Reason: brand-new protocols/assets lack track record; multi-year
+  # operation saturates diminishing returns past ~60–84 months.
+  protocol_age_curve:
+    - { months: 0, score: 10.0 }
+    - { months: 12, score: 40.0 }
+    - { months: 36, score: 75.0 }
+    - { months: 84, score: 100.0 }
+  asset_age_curve:
+    - { months: 0, score: 5.0 }
+    - { months: 12, score: 35.0 }
+    - { months: 36, score: 70.0 }
+    - { months: 84, score: 100.0 }
+
+  # completed_payout_cycles → points. Null omits component (≠ zero cycles).
+  # Reason: “has this asset actually paid” is distinct from mere age.
+  payout_cycles_curve:
+    - { cycles: 0, score: 5.0 }
+    - { cycles: 12, score: 40.0 }
+    - { cycles: 52, score: 70.0 }
+    - { cycles: 100, score: 90.0 }
+    - { cycles: 200, score: 100.0 }
+
+  exposure_type_scores:
+    pooled-diversified: 100.0
+    single-asset: 40.0
+    unverifiable: 15.0
+
+  # Applied AFTER the weighted average of risk components, the same way
+  # yield applies its gap penalty: multiply by max(0, 1 − k * positive_gap).
+  # Only when both advertised and realized exist; omitted otherwise (never
+  # treated as a zero gap). Reason: persistent over-advertising is a risk
+  # flag and should move risk_score visibly, not get diluted as a tiny
+  # fifth-of-a-percent component.
+  gap_penalty_per_pp: 0.05
+
+liquidity:
+  exit_type_scores:
+    # Reason: structural exit mechanism is the primary liquidity fact.
+    open-market-tradeable: 85.0
+    fixed-lockup: 35.0
+    illiquid-broker-required: 15.0
+    unverifiable: 10.0
+
+  # Component mix when length fields are present.
+  # Reason: exit_type is primary; lockup length and estimated days refine it.
+  weight_exit_type: 0.55
+  weight_lockup: 0.25
+  weight_time_to_exit: 0.20
+
+  # lockup_period_weeks → points (only used when exit_type is fixed-lockup
+  # or when lockup is non-null). Longer → worse.
+  # Reason: a 100-week contractual lockup is near-illiquid for most agents.
+  lockup_curve:
+    - { weeks: 0, score: 100.0 }
+    - { weeks: 4, score: 80.0 }
+    - { weeks: 26, score: 50.0 }
+    - { weeks: 52, score: 30.0 }
+    - { weeks: 100, score: 10.0 }
+
+  # estimated_time_to_exit_days → points. Null omits component.
+  time_to_exit_curve:
+    - { days: 0, score: 100.0 }
+    - { days: 7, score: 85.0 }
+    - { days: 30, score: 60.0 }
+    - { days: 90, score: 35.0 }
+    - { days: 365, score: 10.0 }
+
+  # Applied when whitelist/KYC transfer restrictions are detected.
+  # Reason: RealT (and similar) look open-market-tradeable in the enum but
+  # are wallet-gated in practice; without this haircut the enum overstates
+  # liquidity (see FINDINGS.md Part C).
+  whitelist_haircut: 0.70
+
+data_confidence:
+  verification_tier_scores:
+    # Reason: same ordering as risk — stronger evidence → higher confidence.
+    independent-third-party-audit: 100.0
+    cryptographic-onchain-proof: 90.0
+    remote-sensing-verified: 70.0
+    self-reported-unverified: 30.0
+
+  retrieval_method_scores:
+    # Reason: on-chain direct observation beats an API (which can filter/
+    # reshape), which beats a human typing values from marketing pages.
+    onchain-direct-query: 100.0
+    public-api: 70.0
+    manual-entry: 25.0
+
+  weight_verification_tier: 0.30
+  weight_retrieval_method: 0.25
+  weight_completeness: 0.30
+  weight_freshness: 0.15
+
+  # Completeness checklist — each present field = 1, absent/null = 0.
+  # Reason: when two assets share verification_tier (RealT vs Elmnts),
+  # populated vs null records is the main confidence differentiator.
+  completeness_fields:
+    - yield_profile.advertised_yield_pct
+    - yield_profile.realized_yield_pct
+    - yield_profile.yield_calculation_basis
+    - maturity.protocol_age_months
+    - maturity.asset_age_months
+    - maturity.completed_payout_cycles
+    - liquidity.lockup_period_weeks
+    - liquidity.estimated_time_to_exit_days
+    - exposure.operator_name
+    - verification.verification_notes
+
+  # Freshness: age of data_pulled_at in days → points.
+  # Reason: DePIN / tokenized-asset facts go stale; a months-old snapshot
+  # should not look as trustworthy as today’s pull.
+  freshness_curve:
+    - { days: 0, score: 100.0 }
+    - { days: 7, score: 90.0 }
+    - { days: 30, score: 70.0 }
+    - { days: 90, score: 40.0 }
+    - { days: 180, score: 15.0 }
