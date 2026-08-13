@@ -254,8 +254,16 @@ def compute_realized_yield(
     positive = [y for y in weekly_annualized_pct if y > 0]
     weekly_rent = [(y / 100.0) * token_price / 52.0 for y in weekly_annualized_pct]
     years = n / 52.0
-    # Equivalent check: (sum rents / price) / years * 100 == mean_yield
+    # Independent second derivation of the same figure — must match mean_yield.
     equiv = (sum(weekly_rent) / token_price) / years * 100.0
+    # Tight tolerance: catch real logic bugs; allow tiny float noise only.
+    EQUIV_TOLERANCE_PP = 0.01  # percentage points
+    if abs(mean_yield - equiv) > EQUIV_TOLERANCE_PP:
+        raise SourceError(
+            f"Yield consistency check failed: mean_yield={mean_yield!r} diverges from "
+            f"equiv=(sum weekly_rent / price / years * 100)={equiv!r} by more than "
+            f"{EQUIV_TOLERANCE_PP} percentage points — refusing to emit snapshot"
+        )
     return {
         "realized_yield_pct": round(mean_yield, 4),
         "equiv_check": round(equiv, 4),
@@ -325,7 +333,7 @@ def build_instance(
         f"({labels[0]} through {labels[-1]}) from the public RealToken rent tracker "
         f"({rent['source_url']}), which states its inputs are RealT's publicly available "
         f"weekly master rent files. Token price P=${price} USD from "
-        f"{api_base.rstrip('/')}/v1/token. For each week t with annualized yield y_t%%, "
+        f"{api_base.rstrip('/')}/v1/token. For each week t with annualized yield y_t (percent), "
         f"implied weekly rent per token = (y_t/100)*P/52 "
         f"(period average ${stats['avg_weekly_rent_usd']}/token/week; "
         f"sum ${stats['total_rent_usd_per_token']} over {stats['years_observed']} years). "
@@ -344,7 +352,15 @@ def build_instance(
         "not from eth_getLogs attribution of airdrops to this property (airdrops are not "
         "property-tagged on-chain in a decodeable way). Therefore verification_tier remains "
         "self-reported-unverified for rent figures, despite stronger on-chain evidence for "
-        "token existence than platforms with no public payment history."
+        "token existence than platforms with no public payment history. "
+        "The rent tracker itself (ehpst.duckdns.org) is a third-party, community-run/"
+        "hobbyist resource hosted on a free DuckDNS dynamic-DNS domain — not an official "
+        "RealT service and not operated by a company with any SLA or accountability for "
+        "uptime or accuracy. It does not independently verify anything on-chain; it "
+        "republishes RealT's own self-reported master rent files, so realized_yield_pct is "
+        "ultimately still RealT's claimed numbers relayed through one extra, unofficial hop. "
+        "If that specific domain goes offline or changes response format, this rent-history "
+        "source disappears entirely — this adapter has no fallback path for weekly rent data."
     )
     if onchain:
         verification_notes += (
