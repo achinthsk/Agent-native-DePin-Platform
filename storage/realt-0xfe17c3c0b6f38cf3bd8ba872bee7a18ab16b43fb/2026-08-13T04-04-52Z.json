@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.1.0",
+  "asset_id": "realt-0xfe17c3c0b6f38cf3bd8ba872bee7a18ab16b43fb",
+  "source_platform": "realt",
+  "asset_class": "real-estate-rental",
+  "name": "15777 Ardmore St, Detroit, MI 48227",
+  "description_text": "RealT RealToken for 15777 Ardmore St, Detroit, MI 48227 (symbol REALTOKEN-S-15777-ARDMORE-ST-DETROIT-MI), an LLC-series fractional interest in a U.S. rental property. Holders receive a direct share of net rental income paid weekly in USD stablecoins (USDC on Ethereum; USDC or xDAI airdropped on Gnosis per RealT FAQ) \u2014 not a protocol-token emission. Community API tokenPrice=$48.37. Contracts: gnosis=0xFe17C3C0B6F38cF3bD8bA872bEE7a18Ab16b43fB, ethereum=0xfe17c3c0b6f38cf3bd8ba872bee7a18ab16b43fb. U.S. primary sales are under Reg D Rule 506(c) per RealT PPMs; non-U.S. persons may be offered under Regulation S. Transferability requires RealT whitelist/KYC.",
+  "source_url": "https://api.realtoken.community/v1/token",
+  "data_pulled_at": "2026-08-13T04:04:52Z",
+  "retrieval_method": "public-api",
+  "payout_mechanism": {
+    "payout_mechanism_type": "direct-revenue-share",
+    "payout_currency": "stablecoin",
+    "payout_frequency": "weekly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": null,
+    "realized_yield_pct": 9.225,
+    "yield_calculation_basis": "realized_yield_pct=9.225 is the arithmetic mean of 258 weekly annualized-yield observations (2021-02-28 through 2026-02-01) from the public RealToken rent tracker (https://ehpst.duckdns.org/realt_rent_tracker/token), which states its inputs are RealT's publicly available weekly master rent files. Token price P=$48.37 USD from https://api.realtoken.community/v1/token. For each week t with annualized yield y_t (percent), implied weekly rent per token = (y_t/100)*P/52 (period average $0.08581/token/week; sum $22.139029 over 4.9615 years). Equivalence check (sum rents / P / years * 100) = 9.225. Zero-rent weeks are included in the mean (not dropped). Positive-rent weeks: 230 (first positive 2021-02-28, last positive 2025-07-20). This is NOT copied from a marketing APY summary page.",
+    "yield_last_computed_at": "2026-08-13T04:04:52Z"
+  },
+  "verification": {
+    "verification_tier": "self-reported-unverified",
+    "verification_notes": "Property token contract is independently queryable on Gnosis/Ethereum. Weekly USDC/xDAI rent is distributed on-chain (Gnosis airdrop / Ethereum claim), but property-level weekly amounts used for realized_yield_pct come from RealT's published master rent files as exposed by the public community rent tracker \u2014 not from eth_getLogs attribution of airdrops to this property (airdrops are not property-tagged on-chain in a decodeable way). Therefore verification_tier remains self-reported-unverified for rent figures, despite stronger on-chain evidence for token existence than platforms with no public payment history. The rent tracker itself (ehpst.duckdns.org) is a third-party, community-run/hobbyist resource hosted on a free DuckDNS dynamic-DNS domain \u2014 not an official RealT service and not operated by a company with any SLA or accountability for uptime or accuracy. It does not independently verify anything on-chain; it republishes RealT's own self-reported master rent files, so realized_yield_pct is ultimately still RealT's claimed numbers relayed through one extra, unofficial hop. If that specific domain goes offline or changes response format, this rent-history source disappears entirely \u2014 this adapter has no fallback path for weekly rent data. On-chain check: name='RealToken S 15777 Ardmore St Detroit MI', symbol='REALTOKEN-S-1577-ARDMORE-ST-DETROIT-MI', totalSupply=1300.0."
+  },
+  "maturity": {
+    "protocol_age_months": 88,
+    "protocol_age_months_unknown_reason": null,
+    "asset_age_months": 65,
+    "asset_age_months_unknown_reason": null,
+    "completed_payout_cycles": 230,
+    "completed_payout_cycles_unknown_reason": null
+  },
+  "liquidity": {
+    "exit_type": "open-market-tradeable",
+    "lockup_period_weeks": null,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": null,
+    "estimated_time_to_exit_days_unknown_reason": "RealTokens can trade on Gnosis/Ethereum secondary venues (e.g. YAM, SwapCat, Levinswap) for whitelisted wallets, but order-book depth and time-to-exit were not measured in this pull."
+  },
+  "regulatory": {
+    "regulatory_wrapper": "reg-d-506c",
+    "accreditation_required": true,
+    "restricted_jurisdictions": [],
+    "permitted_jurisdictions": [
+      "US"
+    ]
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "RealT property token 0xFe17C3C0B6F38cF3bD8bA872bEE7a18Ab16b43fB (15777 Ardmore St, Detroit, MI 48227)",
+    "operator_name": null,
+    "operator_track_record_notes": "Property management is arranged by RealT / series managers per offering documents; a specific property-manager legal name was not present on the public community API list payload used for this pull."
+  }
+}

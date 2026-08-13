@@ -16,8 +16,12 @@ cp .env.example .env
 | --- | --- | --- | --- |
 | `ETH_RPC_URL` | Recommended | `glow_adapter.py` | Ethereum HTTPS RPC for `eth_call` |
 | `GCA_API_BASE` | Optional | `glow_adapter.py` | Override GCA HTTP API base (default `http://95.217.194.59:35015`) |
+| `REALT_API_BASE` | Optional | `realt_adapter.py` | Community API base (default `https://api.realtoken.community`) |
+| `REALT_RENT_TRACKER_BASE` | Optional | `realt_adapter.py` | Rent tracker base URL |
+| `GNOSIS_RPC_URL` | Optional | `realt_adapter.py` | Gnosis HTTPS RPC for token metadata |
 
 Elmnts manual entry needs **no** secrets (there is no public API to call).
+RealT also needs **no** API key for the public community endpoints used here.
 
 ## Glow — `glow_adapter.py`
 
@@ -51,6 +55,50 @@ python3 adapters/glow_adapter.py --farm-id 1 --dry-run
 attribution is not publicly recoverable (Control API DNS NXDOMAIN; on-chain
 merkle leaves use payout wallets, not farm ShortIDs). The reason is stored in
 `yield_calculation_basis`.
+
+## RealT — `realt_adapter.py`
+
+Pulls **public** RealT property metadata from the community API and weekly
+rent/yield history from the public rent tracker (RealT master rent files),
+then computes a non-null `realized_yield_pct`. See FINDINGS.md Part C.
+
+Requires schema **1.1.0** (`asset_class: real-estate-rental`,
+`source_platform: realt`).
+
+```bash
+# By Gnosis/Ethereum contract address
+python3 adapters/realt_adapter.py \
+  --address 0xFe17C3C0B6F38cF3bD8bA872bEE7a18Ab16b43fB
+
+# By name substring
+python3 adapters/realt_adapter.py --name Ardmore
+
+# First N active rental tokens
+python3 adapters/realt_adapter.py --all --limit 2
+
+python3 adapters/realt_adapter.py --name Ardmore --dry-run
+```
+
+| Variable | Required? | Purpose |
+| --- | --- | --- |
+| `REALT_API_BASE` | Optional | Default `https://api.realtoken.community` |
+| `REALT_RENT_TRACKER_BASE` | Optional | Default `https://ehpst.duckdns.org/realt_rent_tracker` |
+| `GNOSIS_RPC_URL` | Optional | Gnosis HTTPS RPC for token metadata enrichment |
+
+### What it does on failure
+
+Same rules as Glow: clear stderr errors, non-zero exit, **no** `storage/`
+writes on source/validation failure. Note: the community API is behind
+Cloudflare and may return 403 under bursty automated traffic — the adapter
+retries with backoff; if it still fails, it aborts rather than inventing data.
+
+### Yield honesty
+
+`realized_yield_pct` = mean of weekly annualized yields over the observed
+master-rent window (including zero-rent weeks), using community-API
+`tokenPrice`. Calculation basis is written into `yield_calculation_basis`.
+`advertised_yield_pct` is left `null` when the public list payload has no APY
+field — marketing blog ranges (6–16%) are never copied into realized.
 
 ## Elmnts — `elmnts_manual_entry.py`
 

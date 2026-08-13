@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/schemas/asset-v1.schema.json",
   "title": "Normalized Fractional-Ownership Asset Schema",
-  "x-schema-semver": "1.0.0",
-  "$comment": "Schema semantic version 1.0.0. This file represents major version 1 of the schema; instances declare their schema_version and must match this file's major version. This schema stores only observed/reported facts about an asset. It intentionally contains no risk score, yield score, or composite rating field — scoring is computed downstream by a separate service that reads validated instances of this schema.",
+  "x-schema-semver": "1.1.0",
+  "$comment": "Schema semantic version 1.1.0. This file represents major version 1 of the schema; instances declare their schema_version and must match this file's major version. This schema stores only observed/reported facts about an asset. It intentionally contains no risk score, yield score, or composite rating field — scoring is computed downstream by a separate service that reads validated instances of this schema. v1.1.0 adds asset_class value real-estate-rental for tokenized rental real estate (e.g. RealT).",
   "description": "A source-agnostic representation of a single fractional-ownership / revenue-share position in a physical-infrastructure asset (tokenized solar, oil & gas royalties, regulated funds/credit, etc.), designed so an AI agent can compare positions pulled from structurally different source platforms without silently conflating incompatible concepts (e.g. a token-emission reward vs. a direct cash revenue share, or a marketed yield vs. a realized one).",
   "type": "object",
   "properties": {
@@ -19,13 +19,13 @@
     },
     "source_platform": {
       "type": "string",
-      "enum": ["glow", "elmnts", "ixs"],
+      "enum": ["glow", "elmnts", "ixs", "realt"],
       "description": "Which underlying source platform this data was pulled from. A closed enum (not free text) so downstream tooling can branch on platform-specific quirks reliably. New platforms are added by incrementing this schema's minor version, never by accepting arbitrary strings here."
     },
     "asset_class": {
       "type": "string",
-      "enum": ["solar-depin", "oil-gas-royalty", "regulated-fund", "regulated-credit"],
-      "description": "The real-world category of the underlying asset, independent of which source platform it came from. Required so that, e.g., two oil-and-gas royalty positions can be compared to each other directly even if one came from Elmnts and a future one came from a different platform, rather than comparisons being locked to source_platform."
+      "enum": ["solar-depin", "oil-gas-royalty", "regulated-fund", "regulated-credit", "real-estate-rental"],
+      "description": "The real-world category of the underlying asset, independent of which source platform it came from. Required so that, e.g., two oil-and-gas royalty positions can be compared to each other directly even if one came from Elmnts and a future one came from a different platform, rather than comparisons being locked to source_platform. 'real-estate-rental' covers fractional interests in individual rental properties (or LLC series holding them) whose economics are driven by net rental income, e.g. RealT RealTokens — distinct from regulated-fund pooled vehicles."
     },
     "name": {
       "type": "string",

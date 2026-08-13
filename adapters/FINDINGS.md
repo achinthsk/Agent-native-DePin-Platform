@@ -123,7 +123,111 @@ timestamped snapshot the same way as an automated pull.
 
 ---
 
-## IXS (time-permitting note)
+## Part C — RealT (investigation date: 2026-08-12)
 
-Not built in this pass. Same rule would apply: investigate public reachability
-first; only write an automated adapter if a real public source exists.
+### What was checked
+
+1. **Official RealT site / FAQ / PPM**
+   - `https://realt.co` (marketing site) is reachable; property economics are
+     not exposed as a structured public API there.
+   - FAQ confirms weekly rental income in USDC (Ethereum, claim) or USDC/xDAI
+     (Gnosis, airdropped to the registered income wallet). KYC/AML is required
+     to **purchase / hold / transfer** tokens; it is **not** required merely to
+     read public community property metadata or the public rent tracker.
+   - Private Placement Memoranda (e.g. Series #1 Marlowe, Series #3 Fullerton)
+     state U.S. offerings are conducted under **Rule 506(c) of Regulation D**
+     (accredited investors) and offshore sales under **Regulation S**. This
+     adapter therefore uses `regulatory_wrapper: reg-d-506c` for the U.S.
+     Reg D path — confirmed from RealT's own PPM language, not copied from
+     Elmnts by habit. Schema has no separate Reg S enum; Reg S eligibility for
+     non-U.S. persons is noted in description text / jurisdictions fields.
+
+2. **Community property API**
+   - Documented host `https://api.realt.community/v1/token` — TLS handshake
+     **reset** from this environment (unreachable here).
+   - Working host: **`https://api.realtoken.community/v1/token`** — public GET,
+     no login. Returns ~829 tokens with `fullName`, `tokenPrice`,
+     `ethereumContract` / `gnosisContract` / `xDaiContract`, `productType`
+     (including `real_estate_rental`), etc. Cloudflare sometimes returns
+     **403** under automated traffic; retries / cooldown may be required.
+   - Per-token detail routes exist but are also subject to the same 403
+     behavior; the list payload alone is enough for identity + token price.
+
+3. **The Graph subgraphs** (`realtoken-thegraph/realtoken-xdai`,
+   `realtoken-eth`) — hosted service redirects fail / gateway requires an API
+   key. **Not used** for this adapter (no Graph key assumed).
+
+4. **On-chain (Gnosis)** — public RPC `eth_call` works. Example for
+   `0xFe17C3C0B6F38cF3bD8bA872bEE7a18Ab16b43fB` (15777 Ardmore):
+   `name()`, `symbol()`, `totalSupply()` succeed. Rent on Gnosis is
+   **airdropped** as USDC/xDAI to many holder wallets from RealT distribution
+   flows — there is **no** practical public mapping from a raw Transfer log
+   back to "this payment was for property X" without RealT's per-token rent
+   schedule. So: platform-level payments are on-chain; **property-level
+   attribution is not independently recoverable from chain alone** (same class
+   of problem as Glow farm→delegator attribution, but for a different reason).
+
+5. **Public weekly rent history (property-level)**
+   - Community **RealToken rent tracker**
+     `https://ehpst.duckdns.org/realt_rent_tracker/` (no login) exposes, for a
+     token address, a Chart.js series of **weekly annualized yield %** from
+     **2021-02-28 through 2026-02-01**, stated to be based on **"publicly
+     available weekly RealT master rent files"**.
+   - For Ardmore, the tracker also prints the average weekly rent per token
+     implied by that series and the token price. This is the first source in
+     this project that yields a real multi-year, property-specific payment
+     history suitable for a non-null `realized_yield_pct`.
+
+### What is actually reachable right now
+
+| Data | Reachable? | Mechanism |
+| --- | --- | --- |
+| Property / token list, token price, contract addresses | Yes (with CF flakiness) | `GET https://api.realtoken.community/v1/token` |
+| On-chain token metadata (name/symbol/supply) | Yes | Gnosis `eth_call` |
+| Property-level weekly rent / annualized yield history | Yes | Public rent tracker (master rent files) |
+| Independent eth_getLogs attribution of USDC/xDAI airdrops → one property | **No** | Airdrops are not property-tagged on-chain in a way this adapter can decode without the master rent schedule |
+| Official Control-style RealT private portfolio APIs | Not used | Would require investor login/KYC — out of scope |
+
+### Schema fit
+
+- Needs new `asset_class`: **`real-estate-rental`** (schema bumped to **1.1.0**).
+- Needs new `source_platform`: **`realt`**.
+- `payout_mechanism_type`: **`direct-revenue-share`** (net rental income in
+  stablecoins) — matches FAQ/PPM, not a token-emission reward.
+- `regulatory_wrapper`: **`reg-d-506c`** per PPM Rule 506(c) language for U.S.
+  purchasers; `accreditation_required: true`.
+
+### Choice for the RealT adapter (and why)
+
+**Primary:** community API for property identity + token price, plus the
+public rent tracker’s weekly annualized-yield series (from RealT master rent
+files) to compute `realized_yield_pct`.
+**Enrichment:** Gnosis `eth_call` to confirm the token contract.
+**Not used:** The Graph (needs key / broken hosted URL); `api.realt.community`
+(TLS reset here); any KYC-gated RealT portfolio endpoint.
+
+### Realized yield method (explicit)
+
+For a property with weekly annualized yield observations
+`y_1 … y_n` (percent) and API `tokenPrice` `P`:
+
+1. Treat each `y_t` as the annualized rent rate for that week implied by the
+   master rent file (`weekly_rent_t = (y_t/100) * P / 52`).
+2. `realized_yield_pct = mean(y_1 … y_n)` over the full observed window
+   (including zero-rent weeks). Equivalent to
+   `(sum weekly_rent_t / P) / (n/52) * 100`.
+3. `completed_payout_cycles = count of weeks with y_t > 0`.
+4. **Do not** copy RealT marketing “expected APY” into `realized_yield_pct`.
+   `advertised_yield_pct` stays `null` unless a marketed figure is actually
+   present on the public payload used (the slim public list has no APY field).
+
+### Verification tier choice
+
+`verification_tier: self-reported-unverified` for the **rent-amount / yield**
+facts: property-level weekly amounts come from RealT’s published master rent
+files (via the public tracker), not from independently decoded on-chain
+Transfer logs for that property. Token contracts and supplies are on-chain
+(stronger evidence than Elmnts for existence), but that does not upgrade the
+rent-attribution tier under this schema’s definitions. Notes field records
+both facts.
+
