@@ -76,13 +76,31 @@ A large advertised−realized spread means the marketed number is not what
 holders actually got. Averaging the two would let marketing inflate the
 score. The gap penalty makes that inflation costly.
 
+### Implausibly high yields score worse, not better
+
+The yield curve saturates near ~20% (maps to 100 component points). Without
+a further rule, a genuine ~22% and a suspicious 70% claim would both sit at
+the ceiling. After mapping through the curve, if the yield used for that
+component exceeds `implausibility_threshold_pct` (default 30%), multiply by
+`max(0, 1 − implausibility_penalty_per_pp * (pct − threshold))`. Past the
+believable range for these asset classes, more yield is treated as a red
+flag on this axis, not as “even better.” Threshold and rate live in
+`weights.yaml`.
+
+Every score object also includes `"direction": "higher_is_better"` so agents
+consuming the JSON do not have to read this document to know the scale
+convention (including on `insufficient_data` returns).
+
 ### Hand-check expectations
 
 - **Glow:** both yields null → **insufficient data** (not 0).
 - **Elmnts:** both yields null → **insufficient data**.
 - **RealT:** realized 9.225%, advertised null → a **moderate positive**
   yield score from realized alone (roughly mid-range on a 0–20% curve;
-  ~46/100 if 20% maps to 100).
+  ~51/100 on the current curve). Well below the implausibility threshold,
+  so unchanged by that penalty.
+- **Synthetic check:** a 70% realized claim should score **worse** on
+  `yield_score` than a believable high yield (e.g. 18%), not tie at 100.
 
 ---
 
@@ -222,6 +240,7 @@ verification_notes. Exact list is in `weights.yaml`.
 | **Glow** | insufficient data | upper-mid (strong verification, mid age, no cycle count) | low (100-week lockup) | high |
 | **Elmnts** | insufficient data | low (self-reported, empty maturity) | very low (broker/illiquid) | lowest |
 | **RealT** | moderate+ (9.225% realized) | mid (weak verification, strong track record) | mid (tradeable but whitelist-cut) | mid-high (beats Elmnts on completeness + retrieval) |
+| **Implausible yield (e.g. 70%)** | worse than a believable high yield (e.g. 18%), not equal at the curve ceiling | — | — | — |
 
 After the engine runs, compare actual JSON output to this table. Material
 disagreement means fix the formula or the weights — not the hand-check

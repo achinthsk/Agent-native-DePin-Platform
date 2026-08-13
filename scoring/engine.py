@@ -31,6 +31,9 @@ ROOT = Path(__file__).resolve().parents[1]
 STORAGE_DIR = ROOT / "storage"
 WEIGHTS_PATH = Path(__file__).resolve().parent / "weights.yaml"
 
+# Explicit in every score object so agents need not read METHODOLOGY.md.
+DIRECTION = "higher_is_better"
+
 sys.path.insert(0, str(ROOT / "adapters"))
 from common import validate_instance  # noqa: E402
 
@@ -89,8 +92,23 @@ def weighted_mean(parts: list[tuple[float, float]]) -> float | None:
     return sum(p * w for p, w in parts) / tw
 
 
-def map_yield_pct(pct: float, yw: dict[str, Any]) -> float:
-    return clamp(curve_interp(pct, yw["curve_points"], "pct"))
+def map_yield_pct(pct: float, yw: dict[str, Any]) -> tuple[float, dict[str, Any] | None]:
+    """
+    Map a yield % through the curve, then apply implausibility haircut if
+    past the configured threshold. Returns (points, implausibility_meta|None).
+    """
+    base = clamp(curve_interp(pct, yw["curve_points"], "pct"))
+    threshold = float(yw["implausibility_threshold_pct"])
+    rate = float(yw["implausibility_penalty_per_pp"])
+    if pct <= threshold:
+        return base, None
+    excess = pct - threshold
+    multiplier = max(0.0, 1.0 - rate * excess)
+    return clamp(base * multiplier), {
+        "threshold_pct": threshold,
+        "excess_pp": round(excess, 4),
+        "multiplier": round(multiplier, 4),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +130,7 @@ def score_yield(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         return {
             "value": None,
             "insufficient_data": True,
+            "direction": DIRECTION,
             "reason": (
                 "both yield_profile.advertised_yield_pct and "
                 "yield_profile.realized_yield_pct are null"
@@ -120,31 +139,42 @@ def score_yield(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         }
 
     if real is not None and adv is None:
-        return {
-            "value": round(map_yield_pct(float(real), yw), 2),
+        pts, impl = map_yield_pct(float(real), yw)
+        out: dict[str, Any] = {
+            "value": round(pts, 2),
             "insufficient_data": False,
+            "direction": DIRECTION,
             "mode": "realized_only",
             "inputs": inputs,
         }
+        if impl is not None:
+            out["implausibility"] = impl
+        return out
 
     if adv is not None and real is None:
-        mapped = map_yield_pct(float(adv), yw)
+        mapped, impl = map_yield_pct(float(adv), yw)
         discounted = mapped * float(yw["advertised_only_discount"])
-        return {
+        out = {
             "value": round(clamp(discounted), 2),
             "insufficient_data": False,
+            "direction": DIRECTION,
             "mode": "advertised_only",
             "advertised_only_discount": float(yw["advertised_only_discount"]),
             "inputs": inputs,
         }
+        if impl is not None:
+            out["implausibility"] = impl
+        return out
 
     # both present
     adv_f = float(adv)
     real_f = float(real)
     gap = adv_f - real_f  # positive = advertised overshoot
+    real_pts, real_impl = map_yield_pct(real_f, yw)
+    adv_pts, adv_impl = map_yield_pct(adv_f, yw)
     base = (
-        float(yw["weight_realized"]) * map_yield_pct(real_f, yw)
-        + float(yw["weight_advertised"]) * map_yield_pct(adv_f, yw)
+        float(yw["weight_realized"]) * real_pts
+        + float(yw["weight_advertised"]) * adv_pts
     )
     k = float(yw["gap_penalty_per_pp"])
     if gap > 0:
@@ -152,14 +182,23 @@ def score_yield(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
     else:
         multiplier = 1.0
     value = clamp(base * multiplier)
-    return {
+    out = {
         "value": round(value, 2),
         "insufficient_data": False,
+        "direction": DIRECTION,
         "mode": "both",
         "gap_pp": round(gap, 4),
         "gap_multiplier": round(multiplier, 4),
         "inputs": inputs,
     }
+    impl_bits = {}
+    if real_impl is not None:
+        impl_bits["realized"] = real_impl
+    if adv_impl is not None:
+        impl_bits["advertised"] = adv_impl
+    if impl_bits:
+        out["implausibility"] = impl_bits
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +264,7 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         return {
             "value": None,
             "insufficient_data": True,
+            "direction": DIRECTION,
             "reason": "no risk inputs populated",
             "inputs": inputs,
             "components": components,
@@ -251,6 +291,7 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
     return {
         "value": round(clamp(value), 2),
         "insufficient_data": False,
+        "direction": DIRECTION,
         "inputs": inputs,
         "components": components,
     }
@@ -312,6 +353,7 @@ def score_liquidity(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         return {
             "value": None,
             "insufficient_data": True,
+            "direction": DIRECTION,
             "reason": "no liquidity inputs populated",
             "inputs": inputs,
             "components": components,
@@ -330,6 +372,7 @@ def score_liquidity(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
     return {
         "value": round(clamp(base * haircut), 2),
         "insufficient_data": False,
+        "direction": DIRECTION,
         "inputs": inputs,
         "components": components,
         "whitelist_haircut_applied": haircut_applied,
@@ -412,6 +455,7 @@ def score_data_confidence(asset: dict[str, Any], w: dict[str, Any]) -> dict[str,
     return {
         "value": round(clamp(value), 2),
         "insufficient_data": False,
+        "direction": DIRECTION,
         "inputs": inputs,
         "components": components,
     }
@@ -515,6 +559,47 @@ def run_gap_proof(weights: dict[str, Any]) -> dict[str, Any]:
             "risk_components": after.get("components"),
         },
         "risk_delta": round((after["value"] or 0) - (before["value"] or 0), 2),
+        "note": "Synthetic mutation was in-memory only; storage/ unchanged.",
+    }
+
+
+def run_implausibility_proof(weights: dict[str, Any]) -> dict[str, Any]:
+    """
+    Fix 2: 70% realized should score worse than a believable 18%, not tie at
+    the curve ceiling. In-memory only — storage/ unchanged.
+    """
+    realt_dir = STORAGE_DIR / "realt-0xfe17c3c0b6f38cf3bd8ba872bee7a18ab16b43fb"
+    snaps = sorted(realt_dir.glob("*.json")) if realt_dir.is_dir() else []
+    if not snaps:
+        raise SystemExit("no RealT snapshot found for implausibility proof")
+    path = snaps[-1]
+    base = json.loads(path.read_text(encoding="utf-8"))
+    validate_instance(base)
+
+    believable = copy.deepcopy(base)
+    believable["yield_profile"]["realized_yield_pct"] = 18.0
+    believable["yield_profile"]["advertised_yield_pct"] = None
+
+    implausible = copy.deepcopy(base)
+    implausible["yield_profile"]["realized_yield_pct"] = 70.0
+    implausible["yield_profile"]["advertised_yield_pct"] = None
+
+    y_believable = score_yield(believable, weights)
+    y_implausible = score_yield(implausible, weights)
+
+    return {
+        "snapshot_file_cloned": str(path.relative_to(ROOT)),
+        "believable_18pct": {
+            "realized_yield_pct": 18.0,
+            "yield_score": y_believable,
+        },
+        "implausible_70pct": {
+            "realized_yield_pct": 70.0,
+            "yield_score": y_implausible,
+        },
+        "implausible_worse_than_believable": (
+            (y_implausible["value"] or 0) < (y_believable["value"] or 0)
+        ),
         "note": "Synthetic mutation was in-memory only; storage/ unchanged.",
     }
 
@@ -627,6 +712,9 @@ def main() -> None:
                 },
             },
             "advertised_realized_gap_moves_risk": run_gap_proof(weights),
+            "implausible_yield_scores_worse_than_believable": (
+                run_implausibility_proof(weights)
+            ),
         }
 
     text = json.dumps(payload, indent=2, sort_keys=False)

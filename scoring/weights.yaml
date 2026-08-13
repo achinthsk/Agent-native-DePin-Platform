@@ -2,7 +2,7 @@
 # Methodology: scoring/METHODOLOGY.md
 # Every weight below has a one-line reason. Do not hardcode these in engine.py.
 
-version: "1.0.0"
+version: "1.0.1"
 
 # All numeric scores are on a 0–100 scale where higher is better on that axis.
 # risk_score = risk *quality* (safer ↑), not “more risk.”
@@ -33,6 +33,16 @@ yield:
   # Reason: overshoot is a trust/quality signal, not noise to average away.
   # 5pp gap → multiply yield_score by (1 − 0.06*5) = 0.70.
   gap_penalty_per_pp: 0.06
+
+  # Past this annualized %, further upside is treated as suspicious, not
+  # better. Reason: the curve already saturates at 20%; without this,
+  # a 70% claim would score the same 100 as a believable ~20% yield.
+  implausibility_threshold_pct: 30.0
+
+  # Multiplicative penalty per percentage point above the threshold.
+  # Reason: the further past believable range, the less the figure should
+  # be rewarded — e.g. 70% (40pp over) → multiply by (1 − 0.02*40) = 0.20.
+  implausibility_penalty_per_pp: 0.02
 
 risk:
   # verification_tier → points (safer ↑).
