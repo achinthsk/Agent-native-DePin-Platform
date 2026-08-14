@@ -7,7 +7,8 @@ services:
     runtime: python
     plan: free
     region: oregon
-    branch: main
+    # Deploy from the branch you connect in the Render UI (e.g. main after merge,
+    # or cursor/public-https-deploy-c7dd while reviewing).
     buildCommand: pip install -r requirements.txt
     startCommand: python3 -m uvicorn api.public_app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
