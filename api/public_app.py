@@ -35,15 +35,46 @@ from api.mcp_server import mcp as mcp_server
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(ROOT / "data")))
 DASHBOARD_SECRET = os.environ.get("DASHBOARD_SECRET", "")
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get(
-        "ALLOWED_HOSTS",
-        "localhost,127.0.0.1,localhost:*,127.0.0.1:*",
-    ).split(",")
-    if h.strip()
-]
 RATE_LIMIT = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
+
+
+def _allowed_hosts() -> list[str]:
+    """Host allowlist for MCP DNS-rebinding protection.
+
+    Always merges Render's injected hostname when present so production MCP
+    works without a fragile manual ALLOWED_HOSTS edit.
+    """
+    hosts: list[str] = []
+    raw = os.environ.get("ALLOWED_HOSTS", "").strip()
+    if raw:
+        hosts.extend(h.strip() for h in raw.split(",") if h.strip())
+    else:
+        hosts.extend(
+            ["localhost", "127.0.0.1", "localhost:*", "127.0.0.1:*"]
+        )
+
+    for key in ("RENDER_EXTERNAL_HOSTNAME", "RENDER_EXTERNAL_URL"):
+        val = os.environ.get(key, "").strip()
+        if not val:
+            continue
+        if val.startswith("https://"):
+            val = val[len("https://") :]
+        elif val.startswith("http://"):
+            val = val[len("http://") :]
+        val = val.split("/")[0].strip()
+        if val and val not in hosts:
+            hosts.append(val)
+            hosts.append(f"{val}:*")
+
+    # Render free default domain + DNS-rebinding port variants
+    if os.environ.get("RENDER") or any(h.endswith(".onrender.com") for h in hosts):
+        for pattern in ("*.onrender.com", "*.onrender.com:*"):
+            if pattern not in hosts:
+                hosts.append(pattern)
+    return hosts
+
+
+ALLOWED_HOSTS = _allowed_hosts()
 
 
 def _client_ip(request: Request) -> str:

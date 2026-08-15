@@ -25,7 +25,7 @@ Public HTTPS hosting for the scored-assets API. Decisions and rationale:
 | Variable | Example | Notes |
 | --- | --- | --- |
 | `DASHBOARD_SECRET` | long random string | Required to view `/owner/dashboard` |
-| `ALLOWED_HOSTS` | `your-service.onrender.com,your-service.onrender.com:*` | Required for MCP Host allowlist (DNS-rebinding protection) |
+| `ALLOWED_HOSTS` | (optional) | Extra Host allowlist entries. On Render, `RENDER_EXTERNAL_HOSTNAME` is merged automatically so MCP Streamable HTTP accepts `*.onrender.com`. |
 | `RATE_LIMIT_PER_MINUTE` | `60` | Optional; default 60 |
 | `DATA_DIR` | `/opt/render/project/src/data` | Optional; SQLite for keys + request log |
 
