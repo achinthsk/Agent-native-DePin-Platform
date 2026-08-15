@@ -176,6 +176,7 @@ app = FastAPI(
     ),
     version="1.1.0",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 app.add_middleware(AccessControlMiddleware)
 
@@ -260,8 +261,13 @@ def _dashboard_authorized(request: Request) -> bool:
 
 
 @app.get("/owner/dashboard")
+@app.get("/dashboard")
 def owner_dashboard(request: Request) -> Response:
-    """Minimal owner table — not public without shared secret."""
+    """Minimal owner table — not public without shared secret.
+
+    Registered at both /owner/dashboard and /dashboard so a short URL
+    does not 404 (the route is auth-gated with 403, never absent).
+    """
     if not _dashboard_authorized(request):
         return PlainTextResponse(
             "Forbidden: dashboard requires shared secret "

@@ -59,7 +59,7 @@ python3 -m uvicorn api.public_app:app --host 127.0.0.1 --port 8080
 - `POST /v1/keys` — free instant API key  
 - `X-API-Key` header — identity for rate limits (60/min default)  
 - `/mcp` — MCP Streamable HTTP  
-- `/owner/dashboard?secret=...` — owner request log (403 without secret)
+- `/dashboard?secret=...` (also `/owner/dashboard`) — owner request log (403 without secret)
 
 ## Production deploy
 

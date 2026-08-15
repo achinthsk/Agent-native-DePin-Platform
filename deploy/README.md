@@ -8,7 +8,7 @@ Public HTTPS hosting for the scored-assets API. Decisions and rationale:
 - Process: `uvicorn api.public_app:app` on `0.0.0.0:$PORT`
 - REST: `/v1/assets`, `/v1/assets/{id}`, `/v1/methodology`, `POST /v1/keys`
 - MCP: Streamable HTTP at `/mcp` (not stdio)
-- Owner dashboard: `/owner/dashboard?secret=...` (403 without secret)
+- Owner dashboard: `/dashboard?secret=...` (alias `/owner/dashboard`; 403 without secret)
 - TLS: Render-managed on `https://<service>.onrender.com`
 
 ## One-time setup
