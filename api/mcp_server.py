@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Local MCP server for scored Yield Opportunity assets.
+MCP server for scored Yield Opportunity assets.
 
-Thin wrapper around scoring.engine via api.queries — does not recompute scores.
-Not published to the public internet; run locally (stdio by default).
+Local default: stdio transport (inter-process only — not network reachable).
 
-Usage (from repo root):
   python3 api/mcp_server.py
-  # or: python3 -m api.mcp_server
+
+Remote / production: use api/public_app.py, which mounts this same MCPServer
+over Streamable HTTP at /mcp (current SDK recommendation for anything you
+deploy — see deploy/DECISIONS.md). Do not deploy this file's stdio mode
+to the public internet.
+
+Scores come only from scoring.engine via api.queries.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -25,11 +30,11 @@ from mcp.server import MCPServer
 from api import queries
 
 mcp = MCPServer(
-    name="scored-assets-local",
+    name="scored-assets",
     instructions=(
-        "Read-only local access to scored DePIN / tokenized-asset snapshots. "
+        "Read-only access to scored DePIN / tokenized-asset snapshots. "
         "Returns descriptive score detail from scoring.engine. "
-        "Not investment advice. Not reachable on the public internet by default."
+        "Not investment advice."
     ),
 )
 
@@ -114,7 +119,36 @@ def methodology_resource() -> str:
 
 
 def main() -> None:
-    mcp.run(transport="stdio")
+    transport = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
+    if transport in ("streamable-http", "http", "remote"):
+        # Prefer the unified public app for production; this path exists for
+        # standalone MCP-only Streamable HTTP debugging.
+        port = int(os.environ.get("PORT", "8080"))
+        host = os.environ.get("HOST", "0.0.0.0")
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        allowed = [
+            h.strip()
+            for h in os.environ.get(
+                "ALLOWED_HOSTS",
+                "localhost,127.0.0.1,localhost:*,127.0.0.1:*",
+            ).split(",")
+            if h.strip()
+        ]
+        mcp.run(
+            transport="streamable-http",
+            host=host,
+            port=port,
+            json_response=True,
+            stateless_http=True,
+            transport_security=TransportSecuritySettings(
+                enable_dns_rebinding_protection=True,
+                allowed_hosts=allowed,
+                allowed_origins=["*"],
+            ),
+        )
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

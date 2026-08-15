@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Runtime data (API keys + request log SQLite)
+data/
+
 # Python
 __pycache__/
 *.py[cod]

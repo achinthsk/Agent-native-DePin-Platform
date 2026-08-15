@@ -1,7 +1,8 @@
 # Agent-native DePIN Platform
 
-Schema, adapters, scoring engine, and a **local** read-only API over scored
-assets. Nothing here is deployed to the public internet by default.
+Schema, adapters, scoring engine, and a read-only API over scored assets.
+Production hosting (HTTPS) is documented under `deploy/` — local stdio MCP
+remains available for development.
 
 ## Layout
 
@@ -11,7 +12,8 @@ assets. Nothing here is deployed to the public internet by default.
 | `adapters/` | Glow / Elmnts / RealT data pulls → `storage/` |
 | `storage/` | Validated snapshot JSON (facts only) |
 | `scoring/` | Four-axis engine (`yield` / `risk` / `liquidity` / `data_confidence`) |
-| `api/` | Local MCP + REST wrappers around `scoring.engine` |
+| `api/` | Query layer, local MCP/REST, **public** ASGI app |
+| `deploy/` | Hosting decisions + Render deploy steps |
 
 ## Setup
 
@@ -19,7 +21,7 @@ assets. Nothing here is deployed to the public internet by default.
 python3 -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` → `.env` for adapter secrets (RPC URLs, etc.).
+Copy `.env.example` → `.env` for adapter / deploy-related secrets.
 
 ## Scoring (CLI)
 
@@ -28,50 +30,39 @@ python3 scoring/engine.py --latest-only
 python3 scoring/engine.py --latest-only --prove
 ```
 
-## Local API (not public hosting)
+## Local API
 
-Both interfaces call `api/queries.py`, which calls `scoring.engine` live on
-each request. They do not recompute or override score values.
+Shared logic: `api/queries.py` → `scoring.engine` (no score recomputation in the API).
 
-### MCP (stdio)
+### MCP (stdio — local only)
 
 ```bash
 python3 api/mcp_server.py
 ```
 
-Tools: `list_scored_assets`, `get_scored_asset`, `get_scoring_methodology`.  
-Resource: `methodology://scoring`.
-
-In-process smoke test (no network):
-
-```bash
-python3 -c "
-import asyncio, json
-from mcp import Client
-from api.mcp_server import mcp
-
-async def main():
-    async with Client(mcp) as client:
-        r = await client.call_tool('list_scored_assets', {'asset_class': 'solar-depin'})
-        print(json.dumps(r.structured_content, indent=2)[:2000])
-
-asyncio.run(main())
-"
-```
-
-### REST (localhost only)
+### REST (localhost)
 
 ```bash
 python3 api/rest_server.py
-# listens on http://127.0.0.1:8080
+# http://127.0.0.1:8080
 ```
 
-Examples:
+### Public-shaped process (REST + Streamable HTTP MCP + keys + dashboard)
 
 ```bash
-curl -s 'http://127.0.0.1:8080/v1/assets?asset_class=solar-depin' | python3 -m json.tool
-curl -s 'http://127.0.0.1:8080/v1/assets/glow-farm-1' | python3 -m json.tool
-curl -s 'http://127.0.0.1:8080/v1/methodology?format=summary' | python3 -m json.tool
+export DASHBOARD_SECRET=dev-secret
+export ALLOWED_HOSTS=127.0.0.1,localhost,127.0.0.1:*,localhost:*
+export DATA_DIR=/tmp/scored-assets-data
+python3 -m uvicorn api.public_app:app --host 127.0.0.1 --port 8080
 ```
+
+- `POST /v1/keys` — free instant API key  
+- `X-API-Key` header — identity for rate limits (60/min default)  
+- `/mcp` — MCP Streamable HTTP  
+- `/dashboard?secret=...` (also `/owner/dashboard`) — owner request log (403 without secret)
+
+## Production deploy
+
+See `deploy/README.md` and `deploy/DECISIONS.md` (Render + Streamable HTTP).
 
 Responses are descriptive and comparative only — not investment advice.

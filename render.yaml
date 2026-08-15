@@ -1,0 +1,25 @@
+# Render Blueprint — free web service with managed TLS on *.onrender.com
+# See deploy/DECISIONS.md and deploy/README.md.
+
+services:
+  - type: web
+    name: scored-assets-api
+    runtime: python
+    plan: free
+    region: oregon
+    # Deploy from the branch you connect in the Render UI (e.g. main after merge,
+    # or cursor/public-https-deploy-c7dd while reviewing).
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 -m uvicorn api.public_app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: DATA_DIR
+        value: /opt/render/project/src/data
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: DASHBOARD_SECRET
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
