@@ -120,13 +120,49 @@ visible in the schema.
 | `asset_age_months` | Older specific asset → safer. Null → omit component. | Medium |
 | `completed_payout_cycles` | More observed payouts → safer. Null → omit component. | Large (this is the “has it actually paid?” signal) |
 | `exposure_type` | `pooled-diversified` safer than `single-asset`; `unverifiable` worst. | Medium |
+| `payout_mechanism_type` | See subsection below. Category risk of how payout is funded — **not** an issuer-misconduct flag. | Medium |
 | Advertised−realized gap | If both yields present and gap > 0 → safer score falls via a multiplicative penalty (same shape as yield). If either yield is null, this penalty is skipped entirely — never treated as a zero gap. | Applied after the weighted average when computable |
+
+### Payout-mechanism category risk
+
+Measures **structural exposure by `payout_mechanism_type`**, not whether any
+specific protocol “did something wrong.”
+
+| `payout_mechanism_type` | Treatment | Points (safer ↑) |
+| --- | --- | ---: |
+| `direct-revenue-share` | **Omit** this component (no newly-minted-token price leg on the payout) | — |
+| `fixed-interest` | **Omit** (same rationale) | — |
+| `token-emission-reward` | Include — financer’s realized USD return depends on the protocol token’s market price holding up, even if the physical asset performs | **30** |
+
+**Why 30 (evidence basis):** direct on-chain pulls in
+`scoring/GLW_PRICE_EMISSIONS_FINDINGS.md` (not aggregators) show that for the
+current `token-emission-reward` asset (Glow / GLW):
+
+1. Weekly MinerPool mint aggregates sit near the documented fixed
+   infrastructure schedule (median ≈187k GLW/week vs claimed 175k) across
+   dozens of weeks — ongoing newly minted supply is real.
+2. Uniswap V2 GLW–USDG pool
+   (`0x6FA09ffC45F1dDC95c1bc192956717042f142c5d`, resolved via
+   `factory.getPair`) Sync-derived price fell from a sample peak ≈ **3.95**
+   (2025-01-08) to ≈ **0.23** (2026-08 spot) — about **−94%** — while those
+   emissions continued.
+
+That combination is the inherent category risk: mint schedule and token
+market price are independent of (and can diverge from) physical performance.
+Severity 30 is material (comparable to other structural weak mappings in
+this axis) but not a “zero out the asset” hammer, and it applies to **any**
+future `token-emission-reward` asset, not as a Glow-specific penalty.
+
+Weights for the pre-existing risk components were scaled by 0.85 so
+`weight_payout_mechanism: 0.15` fits without unaccounted-for total weight
+(see `weights.yaml`).
 
 ### Aggregation
 
-Weighted average of *available* maturity / verification / exposure
-components only (skip null-driven components). Then, if both yield
-fields are present and `advertised − realized > 0`, multiply by
+Weighted average of *available* maturity / verification / exposure /
+payout-mechanism components only (skip null-driven components and omit
+unmapped payout types). Then, if both yield fields are present and
+`advertised − realized > 0`, multiply by
 `max(0, 1 − gap_penalty_per_pp * gap)`. If **zero** base components are
 available (should be rare — verification_tier and exposure_type are
 always present in valid instances), return insufficient_data.
@@ -137,17 +173,20 @@ should almost always be numeric for schema-valid assets.
 ### Hand-check expectations
 
 - **Glow:** High verification (`cryptographic-onchain-proof`) lifts risk
-  quality; mid ages (~32 / ~31 months) help moderately; missing
-  `completed_payout_cycles` means that strong signal is absent (not treated
-  as zero cycles); single-asset hurts. **Overall: upper-mid risk quality.**
+  quality; mid ages help moderately; missing `completed_payout_cycles`
+  means that strong signal is absent (not treated as zero cycles);
+  single-asset hurts; **`token-emission-reward` now pulls risk quality
+  down** (structural token-price exposure — not a misconduct claim).
+  **Overall: still mid/upper-mid, but clearly lower than the pre-component
+  baseline (~70 → expect roughly ~63, about −7 to −8 points).**
 - **Elmnts:** Self-reported hurts; all maturity fields null (ages/cycles
-  contribute nothing); single-asset hurts; illiquidity is *not* double-
-  counted here (it belongs in liquidity_score). **Overall: low risk
-  quality** — clearly worse than Glow and RealT.
+  contribute nothing); single-asset hurts; `direct-revenue-share` omits the
+  new component → **risk_score unchanged vs prior methodology**. Illiquidity
+  is *not* double-counted here. **Overall: low risk quality.**
 - **RealT:** Self-reported hurts a lot, but protocol ~88 months, asset ~65
   months, and **230** completed payout cycles are strong positive track-
-  record signals; single-asset hurts. **Overall: mid risk quality** —
-  worse than Glow on verification, better than Elmnts on maturity/payouts.
+  record signals; single-asset hurts; `direct-revenue-share` omits the new
+  component → **risk_score unchanged**. **Overall: mid risk quality.**
 
 ---
 
@@ -237,9 +276,9 @@ verification_notes. Exact list is in `weights.yaml`.
 
 | Asset | yield | risk (safer↑) | liquidity↑ | data_confidence↑ |
 | --- | --- | --- | --- | --- |
-| **Glow** | insufficient data | upper-mid (strong verification, mid age, no cycle count) | low (100-week lockup) | high |
-| **Elmnts** | insufficient data | low (self-reported, empty maturity) | very low (broker/illiquid) | lowest |
-| **RealT** | moderate+ (9.225% realized) | mid (weak verification, strong track record) | mid (tradeable but whitelist-cut) | mid-high (beats Elmnts on completeness + retrieval) |
+| **Glow** | insufficient data | mid/upper-mid, **~7–8 pts below prior ~70** after token-emission category component | low (100-week lockup) | high |
+| **Elmnts** | insufficient data | low (self-reported, empty maturity) — **unchanged** (direct-revenue-share omits new component) | very low (broker/illiquid) | lowest |
+| **RealT** | moderate+ (9.225% realized) | mid (weak verification, strong track record) — **unchanged** | mid (tradeable but whitelist-cut) | mid-high (beats Elmnts on completeness + retrieval) |
 | **Implausible yield (e.g. 70%)** | worse than a believable high yield (e.g. 18%), not equal at the curve ceiling | — | — | — |
 
 After the engine runs, compare actual JSON output to this table. Material

@@ -211,12 +211,14 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
     maturity = asset.get("maturity") or {}
     exposure = asset.get("exposure") or {}
     yp = asset.get("yield_profile") or {}
+    payout = asset.get("payout_mechanism") or {}
 
     tier = verification.get("verification_tier")
     protocol_age = maturity.get("protocol_age_months")
     asset_age = maturity.get("asset_age_months")
     cycles = maturity.get("completed_payout_cycles")
     exposure_type = exposure.get("exposure_type")
+    payout_mechanism_type = payout.get("payout_mechanism_type")
     adv = yp.get("advertised_yield_pct")
     real = yp.get("realized_yield_pct")
 
@@ -226,6 +228,7 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         "maturity.asset_age_months": asset_age,
         "maturity.completed_payout_cycles": cycles,
         "exposure.exposure_type": exposure_type,
+        "payout_mechanism.payout_mechanism_type": payout_mechanism_type,
         "yield_profile.advertised_yield_pct": adv,
         "yield_profile.realized_yield_pct": real,
     }
@@ -259,6 +262,20 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         pts = float(exp_scores[exposure_type])
         parts.append((pts, float(rw["weight_exposure_type"])))
         components["exposure_type"] = pts
+
+    # Structural category risk: only mapped payout_mechanism_type values
+    # contribute (today: token-emission-reward). direct-revenue-share /
+    # fixed-interest are intentionally absent from the score map so those
+    # assets omit this component and stay unchanged.
+    payout_scores = rw.get("payout_mechanism_type_scores") or {}
+    if (
+        payout_mechanism_type is not None
+        and payout_mechanism_type in payout_scores
+        and "weight_payout_mechanism" in rw
+    ):
+        pts = float(payout_scores[payout_mechanism_type])
+        parts.append((pts, float(rw["weight_payout_mechanism"])))
+        components["payout_mechanism_type"] = pts
 
     if not parts:
         return {
