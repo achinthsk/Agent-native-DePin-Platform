@@ -2,7 +2,7 @@
 # Methodology: scoring/METHODOLOGY.md
 # Every weight below has a one-line reason. Do not hardcode these in engine.py.
 
-version: "1.1.0"
+version: "1.2.0"
 
 # All numeric scores are on a 0–100 scale where higher is better on that axis.
 # risk_score = risk *quality* (safer ↑), not “more risk.”
@@ -57,16 +57,18 @@ risk:
   # Component weights among available risk inputs.
   # Reason: verification and actual payout history are the strongest
   # “will this keep delivering / is the story checkable?” signals.
-  # Renormalized from v1.0.1 (×0.85) to free 0.15 for payout_mechanism —
-  # structural category risk of token-emission rewards vs direct claims
-  # (see GLW_PRICE_EMISSIONS_FINDINGS.md); proportional so prior relative
-  # emphasis among the original five components is preserved.
-  weight_verification_tier: 0.255
-  weight_protocol_age: 0.1275
-  weight_asset_age: 0.1275
-  weight_completed_payout_cycles: 0.2125
-  weight_exposure_type: 0.1275
-  weight_payout_mechanism: 0.15
+  # v1.1.0 freed 0.15 for flat payout_mechanism (×0.85 from v1.0.1).
+  # v1.2.0 frees 0.12 for emission_token_peak_decline (×0.88 from v1.1.0)
+  # — additive realized-drawdown layer on top of the flat category score;
+  # proportional so prior relative emphasis among existing components
+  # (including payout_mechanism) is preserved. See METHODOLOGY.md.
+  weight_verification_tier: 0.2244
+  weight_protocol_age: 0.1122
+  weight_asset_age: 0.1122
+  weight_completed_payout_cycles: 0.187
+  weight_exposure_type: 0.1122
+  weight_payout_mechanism: 0.132
+  weight_emission_token_peak_decline: 0.12
 
   # Age curves (months → points). Null ages omit the component entirely.
   # Reason: brand-new protocols/assets lack track record; multi-year
@@ -106,6 +108,21 @@ risk:
   # GLW–USDG price fell ~94% peak→spot (GLW_PRICE_EMISSIONS_FINDINGS.md).
   payout_mechanism_type_scores:
     token-emission-reward: 30.0
+
+  # Realized drawdown of the emission token from its observed historical
+  # peak (USDG-per-token from direct pool Sync / getReserves). Additive to
+  # the flat payout_mechanism score. Reason: a token that collapsed ~94%
+  # from peak (GLW findings) is worse risk quality than one that merely
+  # carries category exposure but held price; missing history omits this
+  # component entirely (never invent 0% decline). Knots in METHODOLOGY.md.
+  emission_token_peak_decline_curve:
+    - { decline_pct: 0.0, score: 100.0 }
+    - { decline_pct: 25.0, score: 80.0 }
+    - { decline_pct: 50.0, score: 50.0 }
+    - { decline_pct: 75.0, score: 25.0 }
+    - { decline_pct: 90.0, score: 10.0 }
+    - { decline_pct: 95.0, score: 5.0 }
+    - { decline_pct: 100.0, score: 0.0 }
 
   # Applied AFTER the weighted average of risk components, the same way
   # yield applies its gap penalty: multiply by max(0, 1 − k * positive_gap).

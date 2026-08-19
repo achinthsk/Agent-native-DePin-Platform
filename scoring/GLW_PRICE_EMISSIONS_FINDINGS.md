@@ -165,5 +165,20 @@ falls sharply. Price path and mint schedule are independent variables.
    weak signals already in the risk table (e.g. mid/low enum mappings), not a
    Glow-only penalty.
 
-See `scoring/METHODOLOGY.md` § risk → payout mechanism, and
-`scoring/weights.yaml` `risk.payout_mechanism_type_scores`.
+See `scoring/METHODOLOGY.md` § risk → payout mechanism + emission-token
+peak decline, `scoring/weights.yaml`, and the machine-readable price
+registry `scoring/token_emission_price_history.yaml`.
+
+---
+
+## Part 4 — Explicit reconciliation gap (mint destinations ≠ supply)
+
+The mint scan totals above (MinerPool ≈17.2M + Grants ≈1.3M + VetoCouncil
+≈0.37M ≈ **18.9M** GLW in the scanned window) are a **partial destination
+ledger**. They are **not** reconciled against ERC-20 `totalSupply()` or a
+full circulating-supply series. Other mint recipients, burns, or
+pre-window emissions may exist outside those three addresses.
+
+Peak-decline risk scoring uses **Uniswap V2 pool price path only** and
+does **not** assume mint destinations sum to supply. Do not treat the
+mint tables as a closed supply identity.

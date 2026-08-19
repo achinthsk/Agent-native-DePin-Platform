@@ -121,6 +121,7 @@ visible in the schema.
 | `completed_payout_cycles` | More observed payouts → safer. Null → omit component. | Large (this is the “has it actually paid?” signal) |
 | `exposure_type` | `pooled-diversified` safer than `single-asset`; `unverifiable` worst. | Medium |
 | `payout_mechanism_type` | See subsection below. Category risk of how payout is funded — **not** an issuer-misconduct flag. | Medium |
+| Emission-token peak decline | See subsection below. **Additive** to the flat category penalty: magnitude of already-realized token drawdown when verifiable pool history exists. | Medium |
 | Advertised−realized gap | If both yields present and gap > 0 → safer score falls via a multiplicative penalty (same shape as yield). If either yield is null, this penalty is skipped entirely — never treated as a zero gap. | Applied after the weighted average when computable |
 
 ### Payout-mechanism category risk
@@ -153,17 +154,71 @@ Severity 30 is material (comparable to other structural weak mappings in
 this axis) but not a “zero out the asset” hammer, and it applies to **any**
 future `token-emission-reward` asset, not as a Glow-specific penalty.
 
-Weights for the pre-existing risk components were scaled by 0.85 so
-`weight_payout_mechanism: 0.15` fits without unaccounted-for total weight
-(see `weights.yaml`).
+The flat category score alone treats a token that held steady and one that
+collapsed identically. The next component covers realized magnitude.
+
+### Emission-token peak-decline risk (additive)
+
+**Intent:** when a `token-emission-reward` asset has **real, verifiable,
+directly-pulled** pool price history, score how far the payout token has
+already fallen from its observed historical peak. This is **additive** to
+the flat `payout_mechanism_type` component — category risk stays; this
+layers on realized drawdown.
+
+**When it applies**
+
+| Condition | Treatment |
+| --- | --- |
+| Not `token-emission-reward` | **Omit** (RealT / Elmnts / etc.) |
+| `token-emission-reward` but no reliable peak+current in the scoring price-history registry | **Omit** — never invent 0% decline / full marks |
+| `token-emission-reward` with registry entry from direct pool Sync / `getReserves` (same standard as `GLW_PRICE_EMISSIONS_FINDINGS.md`, not aggregators) | Include |
+
+Input: `decline_pct = 100 × (1 − current_price / peak_price)` from the
+registry file `scoring/token_emission_price_history.yaml` (machine-readable
+sibling of the findings doc — engine reads that file, does not hardcode
+prices and does not re-fetch RPC on every score run).
+
+**Piecewise curve** (`decline_pct` → risk points, safer ↑):
+
+| Decline from peak | Points | Plain-language reason |
+| ---: | ---: | --- |
+| 0% | 100 | No realized market damage beyond the flat category score |
+| 25% | 80 | Noticeable drawdown; still mostly intact vs peak |
+| 50% | 50 | Half of peak USD value gone — meaningfully worse |
+| 75% | 25 | Severe; most peak value destroyed |
+| 90% | 10 | Near-wipe of peak value |
+| 95% | 5 | Floor band for extreme collapses |
+| 100% | 0 | Token worthless vs its own peak |
+
+Piecewise-linear between knots (same interpolator as age/cycle curves).
+
+**Glow hand-check (predict before code):** findings peak **3.954479**
+(2025-01-08 Sync sample) and spot **0.2305** → decline ≈
+`100 × (1 − 0.2305/3.954479)` ≈ **94.17%**. Interpolating 90→95 on the
+curve → component points ≈ **5.8**. With `weight_emission_token_peak_decline:
+0.12` and prior risk weights scaled ×0.88 to free that weight, Glow’s
+overall `risk_score` should fall from the post-category baseline **~62.7**
+to roughly **54–55** (about **−8 points** more). RealT and Elmnts omit both
+emission components → **unchanged**.
+
+**Known data gap (do not paper over):** tracked mint destinations in
+findings (MinerPool + Grants + VetoCouncil) are a **partial** mint ledger
+for the scanned window — they are not reconciled to `totalSupply()` /
+full circulating supply. Peak-decline scoring uses **pool price path
+only**; it does not assume mint destinations sum to supply.
+
+Weights: pre-existing risk component weights (including
+`weight_payout_mechanism`) scaled by 0.88 so
+`weight_emission_token_peak_decline: 0.12` fits without unaccounted-for
+total weight.
 
 ### Aggregation
 
 Weighted average of *available* maturity / verification / exposure /
-payout-mechanism components only (skip null-driven components and omit
-unmapped payout types). Then, if both yield fields are present and
-`advertised − realized > 0`, multiply by
-`max(0, 1 − gap_penalty_per_pp * gap)`. If **zero** base components are
+payout-mechanism / emission-peak-decline components only (skip null-driven
+components and omit unmapped payout types / missing price history). Then,
+if both yield fields are present and `advertised − realized > 0`, multiply
+by `max(0, 1 − gap_penalty_per_pp * gap)`. If **zero** base components are
 available (should be rare — verification_tier and exposure_type are
 always present in valid instances), return insufficient_data.
 
@@ -172,21 +227,13 @@ should almost always be numeric for schema-valid assets.
 
 ### Hand-check expectations
 
-- **Glow:** High verification (`cryptographic-onchain-proof`) lifts risk
-  quality; mid ages help moderately; missing `completed_payout_cycles`
-  means that strong signal is absent (not treated as zero cycles);
-  single-asset hurts; **`token-emission-reward` now pulls risk quality
-  down** (structural token-price exposure — not a misconduct claim).
-  **Overall: still mid/upper-mid, but clearly lower than the pre-component
-  baseline (~70 → expect roughly ~63, about −7 to −8 points).**
-- **Elmnts:** Self-reported hurts; all maturity fields null (ages/cycles
-  contribute nothing); single-asset hurts; `direct-revenue-share` omits the
-  new component → **risk_score unchanged vs prior methodology**. Illiquidity
-  is *not* double-counted here. **Overall: low risk quality.**
-- **RealT:** Self-reported hurts a lot, but protocol ~88 months, asset ~65
-  months, and **230** completed payout cycles are strong positive track-
-  record signals; single-asset hurts; `direct-revenue-share` omits the new
-  component → **risk_score unchanged**. **Overall: mid risk quality.**
+- **Glow:** High verification lifts risk quality; mid ages help; missing
+  cycles omit that signal; single-asset hurts; flat `token-emission-reward`
+  (30) plus **~94% peak decline (~5.8 pts)** both pull down. **Predict
+  overall risk ≈ 54–55** (from post-category ~62.7).
+- **Elmnts:** `direct-revenue-share` + no emission price history → both new
+  components omitted → **risk_score unchanged**. **Overall: low.**
+- **RealT:** same omit path → **risk_score unchanged**. **Overall: mid.**
 
 ---
 
@@ -276,9 +323,9 @@ verification_notes. Exact list is in `weights.yaml`.
 
 | Asset | yield | risk (safer↑) | liquidity↑ | data_confidence↑ |
 | --- | --- | --- | --- | --- |
-| **Glow** | insufficient data | mid/upper-mid, **~7–8 pts below prior ~70** after token-emission category component | low (100-week lockup) | high |
-| **Elmnts** | insufficient data | low (self-reported, empty maturity) — **unchanged** (direct-revenue-share omits new component) | very low (broker/illiquid) | lowest |
-| **RealT** | moderate+ (9.225% realized) | mid (weak verification, strong track record) — **unchanged** | mid (tradeable but whitelist-cut) | mid-high (beats Elmnts on completeness + retrieval) |
+| **Glow** | insufficient data | **predict ≈54–55** after additive peak-decline on top of category penalty (was ~62.7 post-category) | low (100-week lockup) | high |
+| **Elmnts** | insufficient data | low — **unchanged** (omits emission components) | very low (broker/illiquid) | lowest |
+| **RealT** | moderate+ (9.225% realized) | mid — **unchanged** | mid (tradeable but whitelist-cut) | mid-high (beats Elmnts on completeness + retrieval) |
 | **Implausible yield (e.g. 70%)** | worse than a believable high yield (e.g. 18%), not equal at the curve ceiling | — | — | — |
 
 After the engine runs, compare actual JSON output to this table. Material
