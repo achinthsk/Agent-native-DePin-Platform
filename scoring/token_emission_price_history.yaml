@@ -1,0 +1,32 @@
+# Machine-readable sibling of GLW_PRICE_EMISSIONS_FINDINGS.md.
+# Peak / current prices come from direct Uniswap V2 Sync logs + getReserves
+# on the factory-resolved GLW–USDG pair — not aggregator APIs.
+# The scoring engine reads this file; it does not hardcode prices and does
+# not re-fetch RPC on every score run. Re-pull on-chain history → update
+# this file and the findings doc together.
+#
+# Scope: only token-emission-reward assets with verifiable pool history.
+# Missing entry ⇒ peak-decline risk component is omitted (not scored as 0%).
+
+version: "1.0.0"
+
+entries:
+  - asset_ids:
+      - glow-farm-1
+    token_address: "0xf4fbc617a5733eaaf9af08e1ab816b103388d8b6"
+    pair_address: "0x6FA09ffC45F1dDC95c1bc192956717042f142c5d"
+    quote_token: "USDG"
+    # Weekly Sync sample peak (USDG per GLW) — findings table 2025-01-08
+    peak_price: 3.954479
+    peak_date: "2025-01-08"
+    peak_block: 21579589
+    peak_source: "uniswap_v2_sync_log"
+    # Spot from getReserves at investigation time (findings Part 2)
+    current_price: 0.23051022670096274
+    current_as_of: "2026-08-18"
+    current_source: "uniswap_v2_getReserves"
+    findings_doc: "scoring/GLW_PRICE_EMISSIONS_FINDINGS.md"
+    notes: >
+      Peak→current ≈ -94.17%. Mint-destination totals in findings are a
+      partial ledger for the scanned window and are not reconciled to
+      totalSupply(); this entry is price-path only.

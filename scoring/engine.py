@@ -30,6 +30,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_DIR = ROOT / "storage"
 WEIGHTS_PATH = Path(__file__).resolve().parent / "weights.yaml"
+TOKEN_EMISSION_PRICE_HISTORY_PATH = (
+    Path(__file__).resolve().parent / "token_emission_price_history.yaml"
+)
 
 # Explicit in every score object so agents need not read METHODOLOGY.md.
 DIRECTION = "higher_is_better"
@@ -41,6 +44,62 @@ from common import validate_instance  # noqa: E402
 def load_weights(path: Path = WEIGHTS_PATH) -> dict[str, Any]:
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def load_token_emission_price_history(
+    path: Path = TOKEN_EMISSION_PRICE_HISTORY_PATH,
+) -> dict[str, Any]:
+    """Registry of direct-pool peak/current prices for emission tokens.
+
+    Sibling of GLW_PRICE_EMISSIONS_FINDINGS.md — not aggregator data, not
+    hardcoded in score_risk. Missing file or missing asset → omit component.
+    """
+    if not path.is_file():
+        return {}
+    with path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    by_asset: dict[str, Any] = {}
+    for entry in data.get("entries") or []:
+        for aid in entry.get("asset_ids") or []:
+            by_asset[str(aid)] = entry
+    return by_asset
+
+
+def lookup_emission_peak_decline(
+    asset: dict[str, Any],
+    history_by_asset: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Return decline meta if verifiable peak+current exist; else None."""
+    payout = asset.get("payout_mechanism") or {}
+    if payout.get("payout_mechanism_type") != "token-emission-reward":
+        return None
+    registry = (
+        history_by_asset
+        if history_by_asset is not None
+        else load_token_emission_price_history()
+    )
+    entry = registry.get(str(asset.get("asset_id") or ""))
+    if not entry:
+        return None
+    peak = entry.get("peak_price")
+    current = entry.get("current_price")
+    if peak is None or current is None:
+        return None
+    peak_f = float(peak)
+    current_f = float(current)
+    if peak_f <= 0:
+        return None
+    # Clamp so a rally above peak is 0% decline (not negative).
+    decline_pct = max(0.0, 100.0 * (1.0 - current_f / peak_f))
+    return {
+        "peak_price": peak_f,
+        "current_price": current_f,
+        "decline_pct": decline_pct,
+        "peak_date": entry.get("peak_date"),
+        "current_as_of": entry.get("current_as_of"),
+        "pair_address": entry.get("pair_address"),
+        "findings_doc": entry.get("findings_doc"),
+    }
 
 
 def clamp(x: float, lo: float = 0.0, hi: float = 100.0) -> float:
@@ -205,20 +264,28 @@ def score_yield(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
 # Risk (higher = safer)
 # ---------------------------------------------------------------------------
 
-def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
+def score_risk(
+    asset: dict[str, Any],
+    w: dict[str, Any],
+    *,
+    emission_price_history: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     rw = w["risk"]
     verification = asset.get("verification") or {}
     maturity = asset.get("maturity") or {}
     exposure = asset.get("exposure") or {}
     yp = asset.get("yield_profile") or {}
+    payout = asset.get("payout_mechanism") or {}
 
     tier = verification.get("verification_tier")
     protocol_age = maturity.get("protocol_age_months")
     asset_age = maturity.get("asset_age_months")
     cycles = maturity.get("completed_payout_cycles")
     exposure_type = exposure.get("exposure_type")
+    payout_mechanism_type = payout.get("payout_mechanism_type")
     adv = yp.get("advertised_yield_pct")
     real = yp.get("realized_yield_pct")
+    decline_meta = lookup_emission_peak_decline(asset, emission_price_history)
 
     inputs: dict[str, Any] = {
         "verification.verification_tier": tier,
@@ -226,6 +293,10 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         "maturity.asset_age_months": asset_age,
         "maturity.completed_payout_cycles": cycles,
         "exposure.exposure_type": exposure_type,
+        "payout_mechanism.payout_mechanism_type": payout_mechanism_type,
+        "emission_token.peak_decline_pct": (
+            None if decline_meta is None else round(decline_meta["decline_pct"], 4)
+        ),
         "yield_profile.advertised_yield_pct": adv,
         "yield_profile.realized_yield_pct": real,
     }
@@ -259,6 +330,43 @@ def score_risk(asset: dict[str, Any], w: dict[str, Any]) -> dict[str, Any]:
         pts = float(exp_scores[exposure_type])
         parts.append((pts, float(rw["weight_exposure_type"])))
         components["exposure_type"] = pts
+
+    # Structural category risk: only mapped payout_mechanism_type values
+    # contribute (today: token-emission-reward). direct-revenue-share /
+    # fixed-interest are intentionally absent from the score map so those
+    # assets omit this component and stay unchanged.
+    payout_scores = rw.get("payout_mechanism_type_scores") or {}
+    if (
+        payout_mechanism_type is not None
+        and payout_mechanism_type in payout_scores
+        and "weight_payout_mechanism" in rw
+    ):
+        pts = float(payout_scores[payout_mechanism_type])
+        parts.append((pts, float(rw["weight_payout_mechanism"])))
+        components["payout_mechanism_type"] = pts
+
+    # Additive realized drawdown: only when registry has peak+current.
+    # Missing history → omit (never invent 0% decline / full marks).
+    decline_curve = rw.get("emission_token_peak_decline_curve")
+    if (
+        decline_meta is not None
+        and decline_curve
+        and "weight_emission_token_peak_decline" in rw
+    ):
+        pts = curve_interp(
+            float(decline_meta["decline_pct"]),
+            decline_curve,
+            "decline_pct",
+        )
+        parts.append((pts, float(rw["weight_emission_token_peak_decline"])))
+        components["emission_token_peak_decline"] = {
+            "points": round(pts, 2),
+            "decline_pct": round(decline_meta["decline_pct"], 4),
+            "peak_price": decline_meta["peak_price"],
+            "current_price": decline_meta["current_price"],
+            "peak_date": decline_meta.get("peak_date"),
+            "current_as_of": decline_meta.get("current_as_of"),
+        }
 
     if not parts:
         return {
