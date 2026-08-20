@@ -20,6 +20,9 @@ marketing copy as an on-chain interface.
 | 3. Testnet? | **Sepolia addresses exist** for OffchainFractions / GLW test tokens in `@glowlabs-org/utils`, but **live Launchpad listings were only confirmed on the production Hub**. Glow’s own frontend tests use **Anvil mainnet forks**. **Recommend Anvil/Hardhat mainnet fork** as the Part B proving ground. |
 | 4. Spending limits (non-custodial)? | **Part B: platform soft limits only** (refuse to construct / quote above configured USD or GLW). Honest: bypassable outside the tool. **On-chain hard caps (session keys / AA) = future upgrade**, not implied shipped. |
 | 5. Test wallet without platform keys? | **Agent-owned local key** (env / OS keychain, never uploaded) or **wallet-extension / WalletConnect** for interactive tests; fork tests may **impersonate** via Anvil without holding a mainnet key. Platform must never custody. |
+| Commit flag trust? | Hub `isCommittedOnChain` is **API-only**; **independently verifiable** via `getFraction(creator, id)`. Part B must eth_call-verify. |
+| Underfill / refund? | **Not auto.** After expiry without threshold: buyer (or refund operator) calls **`claimRefund`**. |
+| Part B listing gate? | **Yes:** only Hub `isCommittedOnChain: true` **+** `getFraction` OK. Safe vs Hub-only invent; **does not** remove underfill→manual-refund risk. |
 
 ---
 
