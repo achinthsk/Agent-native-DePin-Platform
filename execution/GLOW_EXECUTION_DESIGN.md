@@ -154,6 +154,92 @@ deposit orchestrator). Payment token sentinel
 a normal mainnet ERC-20 buy. Part B should **start with the GLW leg**
 (`buyFractions` + ERC-20 GLW), and treat sGCTL as a later phase.
 
+### Clarification A — Is `isCommittedOnChain` independently verifiable?
+
+**Hub’s `isCommittedOnChain` is not itself an on-chain boolean.** It is a
+Hub-DB / API field. You do **not** need to trust Hub alone to know whether
+a fraction exists on-chain.
+
+**Independent check (recommended):** call
+`OffchainFractions.getFraction(creator, id)` on mainnet
+`0x80EA852448c2807BeAe321deC7c603990209F7db`.
+
+| Interpretation | On-chain signal |
+| --- | --- |
+| Committed / live fraction | Non-zero `token`, `totalSteps > 0`, coherent `stepPrice` / `expirationTimestamp` / `minSharesToRaise` |
+| Not committed (or wrong ids) | Empty / zeroed `FractionData` |
+
+**Live eth_call confirmation (2026-08-20)** for Hub listing
+`creator=0x2b57e1bf…aa9c`, `id=0x51ab76b0…c53d` (matches Hub
+`isCommittedOnChain: true`):
+
+| Field | On-chain value |
+| --- | --- |
+| `token` | GLW `0xf4fbC617A75482dEDE389Cb1D7a7398B432E88d8B6` |
+| `soldSteps` / `totalSteps` | 13 / 106 |
+| `minSharesToRaise` | 106 (= all-or-nothing vs `totalSteps`) |
+| `expirationTimestamp` | `1757931536` → 2026-09-15T12:58:56Z |
+| `manuallyClosed` | false |
+
+**Part B rule:** treat Hub `isCommittedOnChain: true` as a **discovery
+filter only**. Before constructing `buyFractions`, **re-verify** with
+`getFraction`. If Hub says committed and eth_call is empty → refuse (do
+not trust Hub alone).
+
+### Clarification B — What if the farm never reaches full funding?
+
+From `@glowlabs-org/utils` ABI errors + Glow frontend refund UI:
+
+| Question | Answer |
+| --- | --- |
+| Is underfunded GLW **auto-sent back** to the buyer with no tx? | **No.** Funds stay in the fraction contract until a refund is claimed. |
+| Who initiates refund? | Buyer (or an approved refund operator) must call **`claimRefund(user, creator, id)`**. Glow UI: `app/wallet/refund-claims-panel.tsx` + Hub `GET /fractions/refundable-by-wallet`. |
+| When is refund allowed? | After **expiration** (error `CannotClaimRefundWhenNotExpired`) **and** only if the raise **did not** hit threshold (`CannotClaimRefundWhenThresholdReached`). |
+| All-or-nothing? | Live example has `minSharesToRaise == totalSteps` → underfill at expiry ⇒ refundable path, not partial success. |
+
+Blog language about “automatic recover” refers to the **product’s refund
+path being available after failure**, not a silent on-chain pullback of
+GLW without a claim transaction. **Part B must not promise “auto-refund
+with zero user action.”**
+
+### Clarification C — Restrict Part B to `isCommittedOnChain: true`?
+
+**Yes — require it (and on-chain `getFraction` verify) as a v1 gate.** That
+is a **safe and necessary** restriction for:
+
+- Avoiding buys against Hub-only / not-yet-created fraction ids  
+- Avoiding trusting Hub discovery without settlement proof  
+
+**Important nuance — it does NOT eliminate refund uncertainty.**
+
+`isCommittedOnChain: true` only means the crowdfund listing **exists on
+OffchainFractions**. An open, underfilled, committed listing can still
+**expire without filling**, after which GLW is recoverable only via
+**manual `claimRefund`**. So:
+
+| Restriction | Effect |
+| --- | --- |
+| Hub `isCommittedOnChain: true` + `getFraction` OK | Removes “Hub lied / fraction never created” risk |
+| Same restriction alone | **Does not** remove underfill → claim-refund risk |
+
+**Recommended Part B v1 policy (real money):**
+
+1. **Hard gate:** Hub `isCommittedOnChain === true` **and**
+   `getFraction` returns live fraction data.  
+2. **Still document:** buyer may need to call `claimRefund` if the round
+   expires underfunded.  
+3. **Optional stricter v1 filters** (if the goal is to *minimize*
+   refund-path exposure, not only Hub-trust): e.g. refuse buys when
+   remaining steps are large relative to size, or when expiry is far —
+   these are policy choices, not contract guarantees. Completely avoiding
+   underfill risk would require filling the entire remainder in one
+   atomic buy (racey / capital-heavy) or not buying open crowdfunds at
+   all.
+
+**Verdict:** Restricting to already-committed-on-chain farms is a **safe
+v1 discovery/settlement gate**. Treat it as necessary but **not
+sufficient** to claim “no refund uncertainty.”
+
 ---
 
 ## Q2 — If GLW must be acquired first: requirements and slippage risk
@@ -331,15 +417,20 @@ Build a **non-custodial Glow Launchpad GLW-leg executor** with this shape:
     ▼
 [Platform execution service — no keys]
     │  1. GET Hub /applications/sponsor-listings-applications (or by id)
-    │  2. Read activeFraction { owner, id, token, step, remainingSteps, expiration }
-    │  3. Enforce soft limits (reject if over policy)
-    │  4. If GLW balance < required: build Uniswap V2 swap tx skeleton
+    │  2. HARD GATE: activeFraction.isCommittedOnChain === true
+    │       else refuse (v1 — no Hub-only / uncommitted fractions)
+    │  3. eth_call OffchainFractions.getFraction(owner, id);
+    │       refuse if empty / mismatched vs Hub fields
+    │  4. Read { token, step, remainingSteps, expiration, minSharesToRaise }
+    │  5. Enforce soft limits (reject if over policy)
+    │  6. If GLW balance < required: build Uniswap V2 swap tx skeleton
     │       with amountOutMin from fresh quote × slippage bps (default ≤ Glow’s 5%,
     │       configurable tighter)
-    │  5. Build GLW.approve(OffchainFractions, exact-or-buffer)
-    │  6. Build OffchainFractions.buyFractions(creator=owner, id, stepsToBuy,
+    │  7. Build GLW.approve(OffchainFractions, exact-or-buffer)
+    │  8. Build OffchainFractions.buyFractions(creator=owner, id, stepsToBuy,
     │       minStepsToBuy, refundTo, creditTo, false)
-    │  7. eth_call / simulate bundle; return unsigned txs or WalletConnect payload
+    │  9. eth_call / simulate bundle; return unsigned txs or WalletConnect payload
+    │ 10. Agent-facing copy: underfill ⇒ manual claimRefund after expiry
     ▼
 [Agent wallet signs & broadcasts]  ← key never on platform
 ```
@@ -350,6 +441,8 @@ Build a **non-custodial Glow Launchpad GLW-leg executor** with this shape:
 - Claiming that deposit-recovery accounting is fully understood post-fill  
 - On-chain hard spend limits / AA session keys  
 - Relying on Control API `/farms/sponsored` until paths are re-verified  
+- Implying Hub `isCommittedOnChain` alone removes underfill/refund risk  
+- Auto-refund without a `claimRefund` tx
 
 **Success criteria for Part B demo (suggested):**
 
