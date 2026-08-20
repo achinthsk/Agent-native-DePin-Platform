@@ -22,7 +22,8 @@ marketing copy as an on-chain interface.
 | 5. Test wallet without platform keys? | **Agent-owned local key** (env / OS keychain, never uploaded) or **wallet-extension / WalletConnect** for interactive tests; fork tests may **impersonate** via Anvil without holding a mainnet key. Platform must never custody. |
 | Commit flag trust? | Hub `isCommittedOnChain` is **API-only**; **independently verifiable** via `getFraction(creator, id)`. Part B must eth_call-verify. |
 | Underfill / refund? | **Not auto.** After expiry without threshold: buyer (or refund operator) calls **`claimRefund`**. |
-| Part B listing gate? | **Yes:** only Hub `isCommittedOnChain: true` **+** `getFraction` OK. Safe vs Hub-only invent; **does not** remove underfill→manual-refund risk. |
+| Part B listing gate? | **Yes:** Hub `isCommittedOnChain: true` **+** `getFraction` OK **+** fill/expiry policy below. Commit gate alone does not remove underfill risk. |
+| Part B fill/expiry policy? | **Hard AND:** on-chain fill `soldSteps / minSharesToRaise ≥ 0.90` **and** `0 < timeToExpiry ≤ 7 days`. Aim: keep manual-`claimRefund` exposure genuinely low (heuristic, not a guarantee). |
 
 ---
 
@@ -227,21 +228,90 @@ OffchainFractions**. An open, underfilled, committed listing can still
 
 **Recommended Part B v1 policy (real money):**
 
-1. **Hard gate:** Hub `isCommittedOnChain === true` **and**
+1. **Hard gate (commit):** Hub `isCommittedOnChain === true` **and**
    `getFraction` returns live fraction data.  
-2. **Still document:** buyer may need to call `claimRefund` if the round
-   expires underfunded.  
-3. **Optional stricter v1 filters** (if the goal is to *minimize*
-   refund-path exposure, not only Hub-trust): e.g. refuse buys when
-   remaining steps are large relative to size, or when expiry is far —
-   these are policy choices, not contract guarantees. Completely avoiding
-   underfill risk would require filling the entire remainder in one
-   atomic buy (racey / capital-heavy) or not buying open crowdfunds at
-   all.
+2. **Hard gate (fill + expiry):** Clarification D below — **required for
+   v1**, not optional.  
+3. **Still document:** even under D, a residual underfill →
+   `claimRefund` path remains theoretically possible; Part B copy must
+   not claim zero refund risk.
 
-**Verdict:** Restricting to already-committed-on-chain farms is a **safe
-v1 discovery/settlement gate**. Treat it as necessary but **not
-sufficient** to claim “no refund uncertainty.”
+**Verdict:** Commit-on-chain is a **necessary** discovery/settlement gate
+and **not sufficient** alone. Pair it with Clarification D for v1.
+
+### Clarification D — Part B v1 fill-threshold + time-to-expiry policy
+
+Because `claimRefund` is **manual** (not auto), Part B v1 must refuse
+most open crowdfunds — not only uncommitted ones. Goal: only construct
+`buyFractions` when the chance of ending in underfilled/manual-refund
+state is **genuinely low**, not merely “theoretically possible.”
+
+#### Exact thresholds (recommended defaults)
+
+Evaluate **only** from on-chain `getFraction` (re-read at quote time;
+do not trust Hub fill % alone):
+
+```text
+fillRatio     = soldSteps / minSharesToRaise     // integer math: use ≥ 90/100
+timeToExpiry  = expirationTimestamp - now        // seconds; refuse if ≤ 0
+
+PASS only if ALL of:
+  (1) fillRatio     ≥ 0.90          // ≥ 90% of refund threshold already sold
+  (2) 0 < timeToExpiry ≤ 604800     // ≤ 7 days remaining
+  (3) manuallyClosed == false
+  (4) soldSteps < totalSteps        // still buyable inventory
+```
+
+| Constant | Value | Role |
+| --- | --- | --- |
+| `MIN_FILL_RATIO` | **0.90** (90%) | Cap open remainder at ≤10% of `minSharesToRaise` |
+| `MAX_TIME_TO_EXPIRY` | **7 days** (604800 s) | Bound post-buy stall window |
+| Denominator | **`minSharesToRaise`** | That is the on-chain underfill/refund threshold (`CannotClaimRefundWhenThresholdReached`), not marketing “total” alone. When live listings set `minSharesToRaise == totalSteps` (observed), 90% of min ≡ 90% of the all-or-nothing raise. |
+
+**Both (1) and (2) are hard AND gates.** High fill with a long expiry still
+allows weeks of momentum death after our buy; short expiry with low fill
+is near-certain refund territory.
+
+#### Why these numbers (not softer / not maximal)
+
+| Choice | Why |
+| --- | --- |
+| **90% not ~70%** | At 70% filled, 30% of the raise is still open — stall → underfill is still a first-class outcome. At **90%**, at most **10%** of the threshold remains; completing (or nearly completing) the round needs far less additional capital / buyers. |
+| **90% not 95%+ as the only bar** | 95%+ is safer but can leave almost no purchasable inventory on small step counts (e.g. 106-step raises). **90%** is the lowest bar that still keeps remainder small while leaving Part B something real to buy. Operators may tighten to **95%** later without changing architecture. |
+| **7 days not 14–30** | Live example at investigation had ~**26 days** left at **~12%** fill — long runway + low fill is exactly the refund-uncertainty case. **≤ 7 days** keeps the post-buy “stall then expire” window short. Shorter (e.g. 48h) is optional tighten; **7d** avoids last-hour-only sniping while still counting as short. |
+| **7 days not “any expiry if 90%+”** | A 90%-filled raise with **30+ days** left can still reverse; time gate is what makes residual risk *operationally* low for v1. |
+
+**Honesty bound:** these are **policy heuristics** for real-money v1, not
+backtested Glow completion rates (we do not have a public historical
+fill→success series in this investigation). They shrink exposure; they
+do **not** make underfill impossible.
+
+#### Worked refuse example (same live listing as Q1)
+
+| Field | Value | Gate |
+| --- | --- | --- |
+| `soldSteps / minSharesToRaise` | 13 / 106 ≈ **12.3%** | **FAIL** `MIN_FILL_RATIO` |
+| time to expiry (as of 2026-08-20) | ~**26 days** | **FAIL** `MAX_TIME_TO_EXPIRY` |
+
+Part B v1 must **refuse** constructing `buyFractions` for that listing
+despite `isCommittedOnChain: true` and a valid `getFraction`.
+
+#### Soft preference (not a hard gate) — completion buys
+
+When soft USD/GLW limits allow it, **prefer** intents where
+
+`stepsToBuy >= (minSharesToRaise - soldSteps)`
+
+so this buy alone crosses the refund threshold (race still possible;
+use `minStepsToBuy` accordingly). Prefer ≠ require: requiring completion
+on every quote can starve inventory or blow soft limits. Hard gates remain
+90% + ≤7d only.
+
+#### Agent-facing copy (required)
+
+Even when D passes: state that underfill → **manual `claimRefund` after
+expiry** remains possible if the round still misses threshold; Part B
+does not auto-claim refunds in v1.
 
 ---
 
@@ -424,16 +494,24 @@ Build a **non-custodial Glow Launchpad GLW-leg executor** with this shape:
     │       else refuse (v1 — no Hub-only / uncommitted fractions)
     │  3. eth_call OffchainFractions.getFraction(owner, id);
     │       refuse if empty / mismatched vs Hub fields
-    │  4. Read { token, step, remainingSteps, expiration, minSharesToRaise }
-    │  5. Enforce soft limits (reject if over policy)
-    │  6. If GLW balance < required: build Uniswap V2 swap tx skeleton
+    │  4. Read { soldSteps, totalSteps, minSharesToRaise, expiration,
+    │       manuallyClosed, token, stepPrice }
+    │  5. HARD GATE (Clarification D):
+    │       fillRatio = soldSteps / minSharesToRaise ≥ 0.90
+    │       AND 0 < timeToExpiry ≤ 7 days
+    │       AND !manuallyClosed AND soldSteps < totalSteps
+    │       else refuse (do not construct buyFractions)
+    │  6. Enforce soft limits (reject if over policy)
+    │  7. Soft prefer: stepsToBuy that would reach minSharesToRaise
+    │       when within soft limits
+    │  8. If GLW balance < required: build Uniswap V2 swap tx skeleton
     │       with amountOutMin from fresh quote × slippage bps (default ≤ Glow’s 5%,
     │       configurable tighter)
-    │  7. Build GLW.approve(OffchainFractions, exact-or-buffer)
-    │  8. Build OffchainFractions.buyFractions(creator=owner, id, stepsToBuy,
+    │  9. Build GLW.approve(OffchainFractions, exact-or-buffer)
+    │ 10. Build OffchainFractions.buyFractions(creator=owner, id, stepsToBuy,
     │       minStepsToBuy, refundTo, creditTo, false)
-    │  9. eth_call / simulate bundle; return unsigned txs or WalletConnect payload
-    │ 10. Agent-facing copy: underfill ⇒ manual claimRefund after expiry
+    │ 11. eth_call / simulate bundle; return unsigned txs or WalletConnect payload
+    │ 12. Agent-facing copy: residual underfill ⇒ manual claimRefund after expiry
     ▼
 [Agent wallet signs & broadcasts]  ← key never on platform
 ```
@@ -445,15 +523,19 @@ Build a **non-custodial Glow Launchpad GLW-leg executor** with this shape:
 - On-chain hard spend limits / AA session keys  
 - Relying on Control API `/farms/sponsored` until paths are re-verified  
 - Implying Hub `isCommittedOnChain` alone removes underfill/refund risk  
-- Auto-refund without a `claimRefund` tx
+- Implying 90%+≤7d makes underfill **impossible** (it only keeps risk low)  
+- Auto-refund / auto-`claimRefund` without a user (or operator) tx  
 
 **Success criteria for Part B demo (suggested):**
 
 1. On Anvil mainnet fork: simulate approve + `buyFractions` against a pinned
-   open fraction (or fork-created fraction) with soft limit enforced.  
-2. Show swap path with `amountOutMin` reverting when slippage exceeded.  
-3. Show platform rejection when intent exceeds configured cap.  
-4. Prove no private key material in platform logs/env for the “service”
+   open fraction (or fork-created fraction) that **passes** Clarification D
+   and soft limits.  
+2. Show **refusal** when fill < 90% or timeToExpiry > 7 days (e.g. pin
+   the live 13/106 listing shape) — no tx skeleton returned.  
+3. Show swap path with `amountOutMin` reverting when slippage exceeded.  
+4. Show platform rejection when intent exceeds configured cap.  
+5. Prove no private key material in platform logs/env for the “service”
    role.
 
 ---
