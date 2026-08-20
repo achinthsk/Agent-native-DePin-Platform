@@ -24,6 +24,7 @@ marketing copy as an on-chain interface.
 | Underfill / refund? | **Not auto.** After expiry without threshold: buyer (or refund operator) calls **`claimRefund`**. |
 | Part B listing gate? | **Yes:** Hub `isCommittedOnChain: true` **+** `getFraction` OK **+** fill/expiry policy below. Commit gate alone does not remove underfill risk. |
 | Part B fill/expiry policy? | **Hard AND:** on-chain fill `soldSteps / minSharesToRaise ≥ 0.90` **and** `0 < timeToExpiry ≤ 7 days`. Backtest on 155 real fractions: **34/34** gate-passers completed (0 underfill failures among passers). |
+| GLW transfer model? | **Guarded launch (real):** unallowlisted contracts hit `ErrIsContract`. EOAs OK. Launchpad pays CFH (`extcodesize==0`), not OF. See `execution/GLW_GUARDED_LAUNCH_FINDING.md`. |
 
 ---
 

@@ -57,7 +57,10 @@ python3 execution/demo_anvil_fork.py --rpc http://127.0.0.1:8545
 `demo_anvil_fork.py` is the only sender; it requires Anvil chain_id 31337 and
 signs with Anvil’s public test keys only.
 
-Pass-case note: the fork demo uses a deployed `MockERC20` as the fraction
-payment token because mainnet GLW rejects arbitrary `transfer`/`transferFrom`
-(custom error). Gates, `getFraction`, and `buyFractions` are still exercised
-against the real OffchainFractions contract on the fork.
+Pass-case note: the fork demo may use `MockERC20` for simplicity. That is
+**not** because EOAs cannot buy with real GLW. Mainnet GLW is
+`GlowGuardedLaunch`: unallowlisted **contracts** revert with `ErrIsContract`
+(`0x7d3bdde5`). EOAs transfer freely; production `buyFractions` pays a
+counterfactual holder (`extcodesize==0`), not `OffchainFractions`. See
+`GLW_GUARDED_LAUNCH_FINDING.md`. Anvil account `#0` currently has EIP-7702
+code on mainnet and fails the contract check if used as a GLW recipient.
