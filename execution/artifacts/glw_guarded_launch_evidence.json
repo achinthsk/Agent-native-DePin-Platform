@@ -1,0 +1,23 @@
+{
+  "glw_token": "0xf4fbC617A5733EAAF9af08E1Ab816B103388d8B6",
+  "symbol": "GLW-BETA",
+  "contract_kind": "GlowGuardedLaunch",
+  "error": {
+    "selector": "0x7d3bdde5",
+    "name": "ErrIsContract()"
+  },
+  "rule": "If extcodesize(addr)>0 and not allowlistedContracts[addr] \u2192 revert on transfer/_update",
+  "allowlistedContracts": {
+    "OffchainFractions_0x80EA8524": false,
+    "GLW_USDG_UniV2_pair_0x6FA09ffC": true,
+    "MinerPoolAndGCA_0x6Fa8C7a8": true
+  },
+  "anvil_account0_mainnet_code": "0xef0100840c0aa3e04af730edb108482e44f21de09ceac9",
+  "anvil_account0_note": "EIP-7702 delegation prefix 0xef0100 \u2014 treated as contract by guarded launch",
+  "eoa_to_eoa_transfer": "ok",
+  "eoa_to_OffchainFractions": "ErrIsContract",
+  "eoa_to_anvil0": "ErrIsContract",
+  "production_buy_path": "buyer EOA \u2192 CounterfactualHolder (extcodesize 0); useCounterfactualAddress=true on live listings",
+  "fork_repro_useCF_true_buyFractions": "success; soldSteps=9; OF GLW balance remains 0",
+  "implication": "Real guarded-launch restriction on unallowlisted contracts; EOA Launchpad buys remain viable via CFH path"
+}
