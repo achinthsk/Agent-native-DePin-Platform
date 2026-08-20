@@ -23,7 +23,7 @@ marketing copy as an on-chain interface.
 | Commit flag trust? | Hub `isCommittedOnChain` is **API-only**; **independently verifiable** via `getFraction(creator, id)`. Part B must eth_call-verify. |
 | Underfill / refund? | **Not auto.** After expiry without threshold: buyer (or refund operator) calls **`claimRefund`**. |
 | Part B listing gate? | **Yes:** Hub `isCommittedOnChain: true` **+** `getFraction` OK **+** fill/expiry policy below. Commit gate alone does not remove underfill risk. |
-| Part B fill/expiry policy? | **Hard AND:** on-chain fill `soldSteps / minSharesToRaise ≥ 0.90` **and** `0 < timeToExpiry ≤ 7 days`. Aim: keep manual-`claimRefund` exposure genuinely low (heuristic, not a guarantee). |
+| Part B fill/expiry policy? | **Hard AND:** on-chain fill `soldSteps / minSharesToRaise ≥ 0.90` **and** `0 < timeToExpiry ≤ 7 days`. Backtest on 155 real fractions: **34/34** gate-passers completed (0 underfill failures among passers). |
 
 ---
 
@@ -285,6 +285,19 @@ is near-certain refund territory.
 backtested Glow completion rates (we do not have a public historical
 fill→success series in this investigation). They shrink exposure; they
 do **not** make underfill impossible.
+
+#### Backtest (Part B — real on-chain history)
+
+Subsequent Part B work pulled all 155 mainnet `FractionCreated` events and
+archive-`getFraction`-sampled the final 7 days before each expiry
+(`execution/FILL_GATE_BACKTEST.md`, `artifacts/fill_gate_backtest.json`):
+
+| Gate-passers (terminal) | Completed | Failed underfill | Completion rate |
+| --- | --- | --- | --- |
+| 34 | 34 | 0 | **100%** |
+
+**Keep 90% + 7d as the hard gate.** The historical sample does not show
+the policy is weaker than expected. Still not a zero-risk claim.
 
 #### Worked refuse example (same live listing as Q1)
 
@@ -551,7 +564,10 @@ Build a **non-custodial Glow Launchpad GLW-leg executor** with this shape:
    agents long-term (`api-prod-34ce…` vs `gca-crm-backend-production…`).  
 4. **Exact allowance buffer policy** Glow uses in production buys
    (`approvalBufferAtomic` defaults in frontend).  
-5. **Circ circulating supply** for mcap messaging (FDV ≠ circ).
+5. **Circ circulating supply** for mcap messaging (FDV ≠ circ).  
+6. **Historical Launchpad fill→success rates** — **Done in Part B:** see
+   `execution/FILL_GATE_BACKTEST.md` (34/34 gate-passers completed). Revisit
+   if future cohorts weaken; optional tighten to 95%/72h remains available.
 
 ---
 
