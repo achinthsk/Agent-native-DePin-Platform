@@ -75,6 +75,20 @@ actually on-chain: weekly GCA report merkle roots and reward-bucket state at
 MinerPoolAndGCA. Physical production numbers still originate from GCA reports;
 this adapter does not independently re-verify satellite imagery.
 
+### Later addition (2026-08-20) — transfer-side caveat, not a data-read correction
+
+The Step 2 findings above remain accurate for their scope: Glow’s **public
+data / read access** (GCA HTTP, on-chain `eth_call`) is genuinely reachable
+without permission. That conclusion about **data verifiability is unchanged**.
+
+A later Step 7 investigation found that the **GLW token contract itself**
+(`GlowGuardedLaunch` / `GLW-BETA`) blocks transfers to arbitrary
+unallowlisted smart contracts while guarded launch is active. So a blanket
+“permissionless” label for Glow as a whole is incomplete once token custody
+and contract composability are in scope. Full write-up:
+[`execution/GLW_GUARDED_LAUNCH_FINDING.md`](../execution/GLW_GUARDED_LAUNCH_FINDING.md).
+This is an **addition**, not a rewrite of the read-path findings above.
+
 ---
 
 ## Part B — Elmnts
