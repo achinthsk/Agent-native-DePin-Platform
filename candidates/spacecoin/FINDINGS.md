@@ -51,16 +51,13 @@ passive capital-provision bar (Glow / Elmnts / RealT).
 From docs reference: SPACE `0x7ab7C6A935Ab2D1437398790C9C0660af62A80b9`,
 RPC `https://mainnet3.creditcoin.network`, chain id `102030`.
 
-Direct `eth_call` (2026-08-21):
+Direct `eth_call` via `https://mainnet3.creditcoin.network` (2026-08-21):
 
 | Call | Result |
 | --- | --- |
-| `name()` | decoded from RPC response (SPACE token contract reachable) |
-| `symbol()` | reachable |
-| `totalSupply()` | reachable |
-
-So the Creditcoin SPACE ERC-20 cited in docs is a real, queryable contract
-— not vaporware. That does **not** make the earn path capital-only.
+| `name()` | `Spacecoin` |
+| `symbol()` | `SPACE` |
+| `totalSupply()` | **21000000000** (21B, matches docs) |
 
 Also documented:
 
