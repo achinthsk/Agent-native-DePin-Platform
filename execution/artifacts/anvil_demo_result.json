@@ -1,0 +1,27 @@
+{
+  "refuse_case": {
+    "reason_code": "fill_below_threshold",
+    "reason": "Fill ratio 0.1226 < required 0.90 (soldSteps/minSharesToRaise).",
+    "details": {
+      "soldSteps": 13,
+      "minSharesToRaise": 106,
+      "fill_ratio": 0.12264150943396226,
+      "required_min_fill_ratio": 0.9
+    }
+  },
+  "pass_case": {
+    "ok": true,
+    "fraction_id": "0xa02066241c9f0c441021598a393329f0486c904b0ccfd65955fe0088c1cc412d",
+    "creator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "buyer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "payment_token": "0x6646cf04c97d4159ba2B3a199a69b8a5C6aBFC7a",
+    "soldSteps": 91,
+    "txs": [
+      "6ebefe31d9dcafbfe24073f93928c1271639c769be79877a33c0b2ac3a3771a2",
+      "e0f39468515df461a8d90ae382d857317a276564f117940c55c3773da62508b3"
+    ],
+    "chain_id": 31337,
+    "note": "Payment token is fork-deployed MockERC20 because mainnet GLW rejects arbitrary transferFrom (allowlist)."
+  },
+  "mainnet_broadcast": "refused"
+}
