@@ -18,6 +18,7 @@ order.
 python3 scheduler/run_refresh.py
 python3 scheduler/run_refresh.py --break-gca   # deliberate loud Glow failure
 python3 scheduler/run_discovery.py
+python3 scheduler/run_discovery.py --candidate-name "Decen Space"
 python3 scheduler/run_discovery.py --dry-run
 ```
 
@@ -32,6 +33,8 @@ record for a future dashboard.
 | File | Cron (UTC) | Job |
 | --- | --- | --- |
 | `.github/workflows/scheduler-refresh.yml` | Sunday 14:00 | Glow + RealT refresh → PR |
-| `.github/workflows/scheduler-discovery.yml` | Wednesday 14:00 | One backlog candidate → PR |
+| `.github/workflows/scheduler-discovery.yml` | **Tue + Fri** 14:00 | One candidate → PR; `workflow_dispatch` + optional `candidate_name` |
 
-Both support `workflow_dispatch`. Both create PRs only — never merge.
+Refresh supports bare `workflow_dispatch`. Discovery supports
+`workflow_dispatch` with optional `candidate_name` (blank = next backlog
+item). Both create PRs only — never merge.

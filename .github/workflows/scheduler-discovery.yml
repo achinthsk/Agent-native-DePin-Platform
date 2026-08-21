@@ -1,13 +1,22 @@
 name: Scheduler discovery (one candidate)
 
-# Weekly one-candidate discovery from scheduler/backlog.json.
+# Twice-weekly one-candidate discovery from scheduler/backlog.json,
+# plus on-demand workflow_dispatch with optional candidate_name.
 # Opens a PR — never merges. Never touches Elmnts or execution/.
 
 on:
   schedule:
-    # Wednesday 14:00 UTC — see scheduler/DECISIONS.md
-    - cron: "0 14 * * 3"
+    # Tuesday + Friday 14:00 UTC — see scheduler/DECISIONS.md
+    - cron: "0 14 * * 2,5"
   workflow_dispatch:
+    inputs:
+      candidate_name:
+        description: >
+          Optional platform to investigate now (e.g. "Decen Space").
+          Leave blank to take the next item from scheduler/backlog.json.
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -32,7 +41,17 @@ jobs:
       - name: Run discovery cycle (one candidate)
         id: discovery
         continue-on-error: true
-        run: python3 scheduler/run_discovery.py
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidate_name }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CANDIDATE_NAME:-}" ]; then
+            echo "On-demand override: candidate_name=${CANDIDATE_NAME}"
+            python3 scheduler/run_discovery.py --candidate-name "${CANDIDATE_NAME}"
+          else
+            echo "No candidate_name — next backlog item"
+            python3 scheduler/run_discovery.py
+          fi
 
       - name: Guard — never touch Elmnts, execution/, adapters/, storage/
         run: |
@@ -50,6 +69,7 @@ jobs:
       - name: Open PR with results (never merge)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_NAME: ${{ inputs.candidate_name }}
         run: |
           set -euo pipefail
           BRANCH="scheduler/discovery-$(date -u +%Y%m%d-%H%M%S)"
@@ -66,15 +86,27 @@ jobs:
           fi
 
           if [ "${{ steps.discovery.outcome }}" = "success" ]; then
-            TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d)"
-            BODY="Automated one-candidate discovery from \`scheduler/backlog.json\`.
+            if [ -n "${CANDIDATE_NAME:-}" ]; then
+              TITLE="scheduler: on-demand discovery — ${CANDIDATE_NAME} ($(date -u +%Y-%m-%d))"
+              BODY="On-demand discovery via \`workflow_dispatch\` input \`candidate_name=${CANDIDATE_NAME}\`.
 
           Status: **success**
 
-          - One candidate only (backlog pointer advanced).
+          - Same investigation rigor as a scheduled run.
           - Elmnts was not touched.
           - \`execution/\` was not invoked.
           - **Do not auto-merge** — human review required."
+            else
+              TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d)"
+              BODY="Automated one-candidate discovery from \`scheduler/backlog.json\`.
+
+          Status: **success**
+
+          - One candidate only (backlog pointer advanced when applicable).
+          - Elmnts was not touched.
+          - \`execution/\` was not invoked.
+          - **Do not auto-merge** — human review required."
+            fi
           else
             TITLE="scheduler: discovery FAILED $(date -u +%Y-%m-%d)"
             BODY="Automated discovery **failed** (see status log).

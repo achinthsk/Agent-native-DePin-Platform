@@ -65,5 +65,6 @@ by the API.
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| Decentralized Space / Decen Space | `not-yet-investable` | 2026-08-21 | [`decentralized-space/FINDINGS.md`](./decentralized-space/FINDINGS.md) |
 | Spacecoin | `wrong-model` | 2026-08-21 | [`spacecoin/FINDINGS.md`](./spacecoin/FINDINGS.md) |
 | Aethir | `wrong-model` | 2026-08-19 | [`aethir/FINDINGS.md`](./aethir/FINDINGS.md) |

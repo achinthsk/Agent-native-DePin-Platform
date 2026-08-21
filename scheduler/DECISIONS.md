@@ -42,12 +42,18 @@ produce near-duplicate snapshots.
 | Job | Cadence | Cron (UTC) | Why |
 | --- | --- | --- | --- |
 | **Asset refresh** (Glow + RealT) | **Weekly** | `0 14 * * 0` (Sunday 14:00) | Glow buckets finalize on a weekly rhythm; RealT rent is weekly. Weekly history is enough to build a real time series without looking like a scrape bot. |
-| **Discovery** (one backlog candidate) | **Weekly** | `0 14 * * 3` (Wednesday 14:00) | Each investigation hits many official URLs/RPCs. One candidate per week throttles cost and keeps each PR reviewable. Offset from Sunday so refresh and discovery failures are distinguishable in Actions. |
+| **Discovery** (one candidate) | **Twice weekly** | `0 14 * * 2,5` (**Tuesday** + **Friday** 14:00) | Still one candidate per cycle (cost throttle), but twice a week clears a short backlog without waiting a full week between items. Tuesday/Friday are ~3 days apart — evenly spaced, not back-to-back — and sit clear of Sunday refresh so Actions failures stay distinguishable. |
 
-Both workflows also support `workflow_dispatch` for manual proof runs.
+**On-demand discovery:** the discovery workflow also has `workflow_dispatch`
+with optional input `candidate_name`. When set, that platform is
+investigated immediately (need not be on `backlog.json`). When blank,
+behavior matches a scheduled run (next backlog item). Same investigation
+rigor and PR-only output either way. Refresh has no on-demand name input
+(out of scope).
 
-**Not chosen:** daily refresh (unnecessary for rent/solar); monthly discovery
-(too slow against a four-item backlog once greenlit).
+**Not chosen:** daily refresh (unnecessary for rent/solar); once-weekly
+discovery (too slow for a four-item backlog); adjacent cron days (clusters
+load and review).
 
 ---
 
@@ -60,7 +66,7 @@ Compiled from project backlog items already identified for investigation
 | Order | Slug | What | Notes |
 | --- | --- | --- | --- |
 | 1 | `spacecoin` | Spacecoin | DePIN / satellite connectivity capital question |
-| 2 | `decentralized-space` | Decentralized Space | Space DePIN — capital vs operator model |
+| 2 | `decentralized-space` | Decen Space | Space DePIN ground-station marketplace — capital vs operator |
 | 3 | `mining-royalty-tokenization` | Mining royalty tokenization (category) | General category probe: is there a live capital-only royalty path with public data? |
 | 4 | `tokenized-farmland` | Tokenized farmland (category) | General category probe: live farmland RWA with public economics? |
 

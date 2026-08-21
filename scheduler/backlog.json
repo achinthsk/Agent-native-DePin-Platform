@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One candidate per scheduled cycle.",
-  "next_index": 1,
+  "next_index": 2,
   "candidates": [
     {
       "slug": "spacecoin",
@@ -18,13 +18,16 @@
     },
     {
       "slug": "decentralized-space",
-      "display_name": "Decentralized Space",
+      "display_name": "Decen Space",
       "seeds": [
-        "https://www.decentralized.space/",
-        "https://decentralized.space/",
-        "https://docs.decentralized.space/"
+        "https://decenspace.com/",
+        "https://github.com/DecenSpace",
+        "https://outlierventures.io/article/meet-the-next-wave-of-depin-pioneers-announcing-the-startups-in-base-camp-2/",
+        "https://www.aviaspace-bremen.de/en/2025/11/04/decen-space-the-future-of-satellite-ground-operations/"
       ],
-      "notes": "Space DePIN \u2014 capital provision vs node operation"
+      "investigated_at": "2026-08-21",
+      "classification": "not-yet-investable",
+      "notes": "Space DePIN ground-station marketplace — capital vs operator model"
     },
     {
       "slug": "mining-royalty-tokenization",

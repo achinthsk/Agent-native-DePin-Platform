@@ -89,3 +89,48 @@ python3 scheduler/run_refresh.py --break-gca
 - Elmnts storage untouched
 - No imports / subprocess of `execution/`
 - Workflows open PRs only (`gh pr create`) — no `gh pr merge`
+
+---
+
+## 5. Twice-weekly schedule + on-demand `candidate_name` (follow-up)
+
+### Cron (both days) in `.github/workflows/scheduler-discovery.yml`
+
+```yaml
+schedule:
+  # Tuesday + Friday 14:00 UTC — see scheduler/DECISIONS.md
+  - cron: "0 14 * * 2,5"
+workflow_dispatch:
+  inputs:
+    candidate_name:
+      description: >
+        Optional platform to investigate now (e.g. "Decen Space").
+        Leave blank to take the next item from scheduler/backlog.json.
+      required: false
+      default: ""
+      type: string
+```
+
+### On-demand Decen Space
+
+```bash
+python3 scheduler/run_discovery.py --candidate-name "Decen Space"
+```
+
+- Matched backlog slug `decentralized-space` (fuzzy: Decen Space ↔ Decentralized Space)
+- Wrote `candidates/decentralized-space/FINDINGS.md`
+- Classification: **`not-yet-investable`** (real early DePIN; no live public
+  docs/API/token path; intended supply side is ground-station hardware)
+- Backlog `next_index` advanced `1 → 2` (was the next backlog item)
+
+### Empty-input fallback still works
+
+With `next_index=2` after the on-demand run:
+
+```bash
+python3 scheduler/run_discovery.py --dry-run   # no --candidate-name
+```
+
+Resolves to **`mining-royalty-tokenization`** / “Mining royalty tokenization
+(category)” — same as a scheduled run or a blank `workflow_dispatch`
+`candidate_name`. Dry-run did not advance the pointer.

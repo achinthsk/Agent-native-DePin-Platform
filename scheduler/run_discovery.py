@@ -2,15 +2,16 @@
 """
 One-candidate discovery cycle for the scheduler.
 
-Pulls the next entry from scheduler/backlog.json, runs the candidates/
-investigation process (seed fetch + FINDINGS.md + README index row),
-advances the backlog pointer, and appends a status record.
+Default: next entry from scheduler/backlog.json.
+Override: --candidate-name investigates that platform immediately
+(need not already be on the backlog). Same investigation process either
+way — seed fetch + FINDINGS.md + README index; PR-only, no auto-merge.
 
-Never touches execution/. Never refreshes Elmnts. Does not auto-merge —
-the GitHub Actions workflow opens a PR for human review.
+Never touches execution/. Never refreshes Elmnts.
 
 Usage:
   python3 scheduler/run_discovery.py
+  python3 scheduler/run_discovery.py --candidate-name "Decen Space"
   python3 scheduler/run_discovery.py --dry-run
 """
 
@@ -110,13 +111,152 @@ def save_backlog(data: dict[str, Any]) -> None:
     BACKLOG_PATH.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def slugify(name: str) -> str:
+    s = name.strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    return s.strip("-") or "candidate"
+
+
+def _tokens_fuzzy_match(a: str, b: str) -> bool:
+    """True when hyphen tokens align by prefix (decen-space ~ decentralized-space)."""
+    ta, tb = a.split("-"), b.split("-")
+    if not ta or not tb:
+        return False
+    if len(ta) != len(tb):
+        if len(ta) == 1:
+            return any(
+                t.startswith(ta[0]) or ta[0].startswith(t)
+                for t in tb
+                if len(ta[0]) >= 4
+            )
+        return False
+    return all(
+        x.startswith(y) or y.startswith(x)
+        for x, y in zip(tb, ta)
+        if len(x) >= 3 and len(y) >= 3
+    )
+
+
+def match_backlog_candidate(
+    items: list[dict[str, Any]], name: str
+) -> tuple[dict[str, Any], int] | None:
+    """Return (candidate, index) if name resolves to a backlog entry."""
+    raw = name.strip()
+    slug = slugify(raw)
+    lower = raw.lower()
+    for i, c in enumerate(items):
+        if c.get("slug") == slug:
+            return c, i
+        if (c.get("display_name") or "").lower() == lower:
+            return c, i
+        if _tokens_fuzzy_match(slug, c.get("slug") or ""):
+            return c, i
+        dn_slug = slugify(c.get("display_name") or "")
+        if dn_slug and _tokens_fuzzy_match(slug, dn_slug):
+            return c, i
+    return None
+
+
+def synthetic_candidate(name: str) -> dict[str, Any]:
+    """Ad-hoc candidate when name is not on backlog.json — same investigate() path."""
+    slug = slugify(name)
+    compact = slug.replace("-", "")
+    seeds = [
+        f"https://www.{compact}.com/",
+        f"https://{compact}.com/",
+        f"https://www.{compact}.org/",
+        f"https://{compact}.org/",
+        f"https://docs.{compact}.com/",
+        f"https://docs.{compact}.org/",
+    ]
+    if "-" in slug:
+        seeds.extend(
+            [
+                f"https://www.{slug}.com/",
+                f"https://{slug}.org/",
+                f"https://docs.{slug}.org/",
+            ]
+        )
+    return {
+        "slug": slug,
+        "display_name": name.strip(),
+        "seeds": seeds,
+        "notes": (
+            f"On-demand discovery override for {name.strip()!r} "
+            "(not required to be on scheduler/backlog.json)."
+        ),
+        "on_demand": True,
+    }
+
+
+def resolve_candidate(
+    backlog: dict[str, Any], candidate_name: str | None
+) -> tuple[dict[str, Any], bool, dict[str, Any]]:
+    """
+    Resolve who to investigate.
+
+    Returns (candidate, advance_backlog, meta).
+    - No override: next backlog item; advance on success.
+    - Override matching backlog at next_index: that item; advance on success.
+    - Override matching other backlog item: that item; do not advance.
+    - Override not on backlog: synthetic candidate; do not advance.
+    """
+    items = backlog.get("candidates") or []
+    idx = int(backlog.get("next_index", 0))
+    meta: dict[str, Any] = {
+        "override": bool(candidate_name and candidate_name.strip()),
+        "next_index": idx,
+        "backlog_len": len(items),
+    }
+
+    if not candidate_name or not candidate_name.strip():
+        if not items:
+            raise RuntimeError("backlog is empty — nothing to investigate")
+        if idx >= len(items):
+            raise RuntimeError(
+                f"backlog exhausted (next_index={idx}, len={len(items)}). "
+                "Add candidates or reset next_index manually."
+            )
+        cand = items[idx]
+        meta["source"] = "backlog_next"
+        return cand, True, meta
+
+    matched = match_backlog_candidate(items, candidate_name)
+    if matched is not None:
+        cand, found_idx = matched
+        advance = found_idx == idx
+        meta["source"] = "backlog_match"
+        meta["matched_index"] = found_idx
+        meta["advance_backlog"] = advance
+        return cand, advance, meta
+
+    cand = synthetic_candidate(candidate_name)
+    meta["source"] = "synthetic_on_demand"
+    meta["advance_backlog"] = False
+    return cand, False, meta
+
+
 def html_to_text(raw: str) -> str:
+    # Prefer meta description / og:description for JS-heavy marketing SPAs.
+    meta_bits: list[str] = []
+    for pat in (
+        r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']description["\']',
+        r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:description["\']',
+    ):
+        m = re.search(pat, raw, flags=re.I)
+        if m:
+            meta_bits.append(m.group(1).strip())
     parser = _TextExtractor()
     try:
         parser.feed(raw)
-        return parser.text()
+        body = parser.text()
     except Exception:
-        return re.sub(r"<[^>]+>", " ", raw)
+        body = re.sub(r"<[^>]+>", " ", raw)
+    if meta_bits:
+        return " ".join(meta_bits) + " " + body
+    return body
 
 
 def fetch_url(url: str) -> dict[str, Any]:
@@ -259,7 +399,8 @@ Backlog notes: {notes}
 
 ## What was checked
 
-Seed URLs from `scheduler/backlog.json` were fetched live in this cycle.
+Seed URLs were fetched live in this cycle
+({("on-demand override" if candidate.get("on_demand") else "backlog / matched seeds")}).
 
 | Source | Result |
 | --- | --- |
@@ -333,6 +474,15 @@ def update_readme_index(slug: str, name: str, classification: str, day: str) -> 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--candidate-name",
+        default=None,
+        help=(
+            "Optional on-demand platform name. Investigates that candidate "
+            "immediately (need not be on backlog.json). Blank/omitted = "
+            "next backlog item."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Investigate but do not write FINDINGS / advance backlog",
@@ -341,27 +491,19 @@ def main() -> int:
 
     assert_scheduler_safe()
     started = utc_now_iso()
-    details: dict[str, Any] = {"dry_run": args.dry_run}
+    details: dict[str, Any] = {
+        "dry_run": args.dry_run,
+        "candidate_name_input": args.candidate_name,
+    }
 
     try:
         backlog = load_backlog()
-        items = backlog.get("candidates") or []
-        idx = int(backlog.get("next_index", 0))
-        details["next_index_before"] = idx
-        details["backlog_len"] = len(items)
-
-        if not items:
-            raise RuntimeError("backlog is empty — nothing to investigate")
-        if idx >= len(items):
-            raise RuntimeError(
-                f"backlog exhausted (next_index={idx}, len={len(items)}). "
-                "Add candidates or reset next_index manually."
-            )
-
-        candidate = items[idx]
+        candidate, advance, meta = resolve_candidate(backlog, args.candidate_name)
+        details.update(meta)
         slug = candidate["slug"]
         details["candidate"] = slug
         details["display_name"] = candidate.get("display_name")
+        details["advance_backlog"] = advance
 
         result = investigate(candidate)
         details["classification"] = result["classification"]
@@ -396,9 +538,16 @@ def main() -> int:
             slug, result["display_name"], result["classification"], result["date"]
         )
 
-        backlog["next_index"] = idx + 1
-        save_backlog(backlog)
-        details["next_index_after"] = idx + 1
+        if advance:
+            idx = int(backlog.get("next_index", 0))
+            backlog["next_index"] = idx + 1
+            save_backlog(backlog)
+            details["next_index_after"] = idx + 1
+            print(f"Advanced backlog next_index -> {idx + 1}")
+        else:
+            details["next_index_after"] = backlog.get("next_index")
+            print("Backlog pointer unchanged (on-demand / non-next match)")
+
         details["findings_path"] = str(findings_path.relative_to(REPO_ROOT))
 
         append_status(
@@ -410,7 +559,6 @@ def main() -> int:
         )
         print(f"Wrote {findings_path}")
         print(f"Classification: {result['classification']}")
-        print(f"Advanced backlog next_index -> {idx + 1}")
         return 0
 
     except Exception as e:
