@@ -1,0 +1,100 @@
+name: Scheduler refresh (Glow + RealT)
+
+# Weekly Glow + RealT snapshot refresh. Opens a PR — never merges.
+# Elmnts is intentionally excluded. execution/ is never invoked.
+
+on:
+  schedule:
+    # Sunday 14:00 UTC — see scheduler/DECISIONS.md
+    - cron: "0 14 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: scheduler-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install adapter deps
+        run: |
+          python3 -m pip install --upgrade pip
+          # Glow needs web3 + dotenv; RealT needs dotenv (stdlib urllib otherwise).
+          python3 -m pip install "web3>=6,<8" python-dotenv
+
+      - name: Run refresh cycle
+        id: refresh
+        continue-on-error: true
+        run: python3 scheduler/run_refresh.py
+
+      - name: Guard — never touch Elmnts or execution/
+        run: |
+          if git diff --name-only | grep -E '^(storage/elmnts|execution/)'; then
+            echo "FATAL: refresh touched Elmnts or execution/" >&2
+            exit 1
+          fi
+          if git ls-files --others --exclude-standard | grep -E '^(storage/elmnts|execution/)'; then
+            echo "FATAL: refresh created Elmnts or execution/ paths" >&2
+            exit 1
+          fi
+
+      - name: Open PR with results (never merge)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH="scheduler/refresh-$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name "scheduler-bot"
+          git config user.email "scheduler-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+          # Always stage status log; stage storage only if present.
+          git add scheduler/status/status_log.jsonl || true
+          git add storage/glow-farm-1/ storage/realt-*/ 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "No file changes to commit (unexpected if status log should append)."
+            exit 1
+          fi
+
+          if [ "${{ steps.refresh.outcome }}" = "success" ]; then
+            TITLE="scheduler: Glow + RealT refresh $(date -u +%Y-%m-%d)"
+            BODY="Automated weekly refresh of Glow and RealT snapshots.
+
+          Status: **success**
+
+          - Elmnts was not touched (manual-entry only).
+          - \`execution/\` was not invoked.
+          - **Do not auto-merge** — human review required."
+          else
+            TITLE="scheduler: Glow + RealT refresh FAILED $(date -u +%Y-%m-%d)"
+            BODY="Automated weekly refresh **failed**.
+
+          Status log records the failure. No fabricated fresh snapshot should
+          be treated as success.
+
+          - Elmnts was not touched.
+          - \`execution/\` was not invoked.
+          - **Do not auto-merge** — inspect the failure, then close or fix."
+          fi
+
+          git commit -m "$TITLE"
+          git push -u origin "$BRANCH"
+          gh pr create --title "$TITLE" --body "$BODY" --base main || true
+
+          if [ "${{ steps.refresh.outcome }}" != "success" ]; then
+            exit 1
+          fi

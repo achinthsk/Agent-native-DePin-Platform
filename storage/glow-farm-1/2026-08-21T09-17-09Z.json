@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "glow-farm-1",
+  "source_platform": "glow",
+  "asset_class": "solar-depin",
+  "name": "Glow Solar Farm #1",
+  "description_text": "Glow-protocol solar installation ShortID=1, reported capacity 0.000600 MW (from GCA Capacity=600000 milliwatts), coordinates lat=40.77898, lon=-111.9221. Protocol token is Glow (GLW-BETA). Holders who finance a farm's protocol deposit earn GLW token-emission rewards over the protocol's vesting window; they do not receive a direct cash cut of this farm's electricity revenue (100% of electricity revenue is contributed to Glow's shared incentive pool per Glow public docs). On-chain genesis=1700352000, currentBucket=143.",
+  "source_url": "http://95.217.194.59:35015/api/v1/equipment",
+  "data_pulled_at": "2026-08-21T09:17:09Z",
+  "retrieval_method": "public-api",
+  "payout_mechanism": {
+    "payout_mechanism_type": "token-emission-reward",
+    "payout_currency": "native-protocol-token",
+    "payout_frequency": "weekly"
+  },
+  "yield_profile": {
+    "advertised_yield_pct": null,
+    "realized_yield_pct": null,
+    "yield_calculation_basis": "realized_yield_pct is null because farm-level GLW emissions to this farm's delegators are not publicly attributable from currently reachable sources. MinerPoolAndGCA weekly reports store merkle roots whose leaves are (payoutWallet, glwRewardsWeight, grcRewardsWeight); this adapter observed on-chain bucket 141 (finalized=True, totalGLWRewardsWeight=174999999999999854) but cannot map those weights to farm ShortID 1 or to delegator positions. The Glow Control API (control-api.glowlabs.org), which the official SDK documents for /farms/{{id}}/weekly-rewards, returned NXDOMAIN at investigation time. advertised_yield_pct is also null: no marketed yield percentage is present on the GCA equipment endpoint or in on-chain view getters queried here.",
+    "yield_last_computed_at": "2026-08-21T09:17:09Z"
+  },
+  "verification": {
+    "verification_tier": "cryptographic-onchain-proof",
+    "verification_notes": "Weekly GCA carbon-credit / reward reports are posted on-chain to MinerPoolAndGCA (0x6Fa8C7a89b22bf3212392b778905B12f3dBAF5C4) as merkle roots (BucketSubmission / bucket()), which anyone can eth_call. That is the cryptographic on-chain proof this tier refers to. Physical electricity/output figures for this farm originate from the public GCA equipment/device-stats API and from GCA reports \u2014 this adapter did not independently re-verify satellite or AI imagery for this pull."
+  },
+  "maturity": {
+    "protocol_age_months": 33,
+    "protocol_age_months_unknown_reason": null,
+    "asset_age_months": 32,
+    "asset_age_months_unknown_reason": null,
+    "completed_payout_cycles": null,
+    "completed_payout_cycles_unknown_reason": "Farm-specific completed payout cycles are not observable from the GCA equipment endpoint or from MinerPoolAndGCA bucket global state alone. Weekly buckets exist protocol-wide (currentBucket=143), but this adapter cannot prove how many finalized buckets included this farm ShortID in a reward merkle tree without Control API weekly-rewards data or decoded leaves.",
+    "protocol_version": "Glow Guarded Launch / MinerPoolAndGCA"
+  },
+  "liquidity": {
+    "exit_type": "fixed-lockup",
+    "lockup_period_weeks": 100,
+    "lockup_period_weeks_unknown_reason": null,
+    "estimated_time_to_exit_days": null,
+    "estimated_time_to_exit_days_unknown_reason": "Contractual vesting is documented as 100 weeks, but practical time-to-exit after (or during) vesting was not observed from GCA or on-chain data in this pull \u2014 no public order-book / redemption latency figure was available."
+  },
+  "regulatory": {
+    "regulatory_wrapper": "unregistered-onchain-token",
+    "accreditation_required": false,
+    "restricted_jurisdictions": [],
+    "permitted_jurisdictions": []
+  },
+  "exposure": {
+    "exposure_type": "single-asset",
+    "underlying_reference": "Glow GCA farm ShortID 1",
+    "operator_name": null,
+    "operator_track_record_notes": "GCA /api/v1/equipment does not publish an operator legal name for this ShortID. Debt=22395000 cents, ProtocolFee=1067524 cents as reported by the GCA server (not independently audited by this adapter)."
+  }
+}

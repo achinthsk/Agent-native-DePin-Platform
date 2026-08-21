@@ -1,0 +1,93 @@
+name: Scheduler discovery (one candidate)
+
+# Weekly one-candidate discovery from scheduler/backlog.json.
+# Opens a PR — never merges. Never touches Elmnts or execution/.
+
+on:
+  schedule:
+    # Wednesday 14:00 UTC — see scheduler/DECISIONS.md
+    - cron: "0 14 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: scheduler-discovery
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run discovery cycle (one candidate)
+        id: discovery
+        continue-on-error: true
+        run: python3 scheduler/run_discovery.py
+
+      - name: Guard — never touch Elmnts, execution/, adapters/, storage/
+        run: |
+          CHANGED=$(git diff --name-only; git ls-files --others --exclude-standard)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -E '^(storage/|execution/|adapters/|scoring/|api/|schema/)'; then
+            echo "FATAL: discovery touched out-of-scope paths" >&2
+            exit 1
+          fi
+          if echo "$CHANGED" | grep -Ei 'elmnts'; then
+            echo "FATAL: discovery touched Elmnts paths" >&2
+            exit 1
+          fi
+
+      - name: Open PR with results (never merge)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH="scheduler/discovery-$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name "scheduler-bot"
+          git config user.email "scheduler-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+          git add scheduler/status/status_log.jsonl scheduler/backlog.json \
+            candidates/ || true
+
+          if git diff --cached --quiet; then
+            echo "No file changes to commit."
+            exit 1
+          fi
+
+          if [ "${{ steps.discovery.outcome }}" = "success" ]; then
+            TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d)"
+            BODY="Automated one-candidate discovery from \`scheduler/backlog.json\`.
+
+          Status: **success**
+
+          - One candidate only (backlog pointer advanced).
+          - Elmnts was not touched.
+          - \`execution/\` was not invoked.
+          - **Do not auto-merge** — human review required."
+          else
+            TITLE="scheduler: discovery FAILED $(date -u +%Y-%m-%d)"
+            BODY="Automated discovery **failed** (see status log).
+
+          - Elmnts was not touched.
+          - \`execution/\` was not invoked.
+          - **Do not auto-merge**."
+          fi
+
+          git commit -m "$TITLE"
+          git push -u origin "$BRANCH"
+          gh pr create --title "$TITLE" --body "$BODY" --base main || true
+
+          if [ "${{ steps.discovery.outcome }}" != "success" ]; then
+            exit 1
+          fi

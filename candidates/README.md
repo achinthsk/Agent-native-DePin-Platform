@@ -65,4 +65,5 @@ by the API.
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| Spacecoin | `wrong-model` | 2026-08-21 | [`spacecoin/FINDINGS.md`](./spacecoin/FINDINGS.md) |
 | Aethir | `wrong-model` | 2026-08-19 | [`aethir/FINDINGS.md`](./aethir/FINDINGS.md) |

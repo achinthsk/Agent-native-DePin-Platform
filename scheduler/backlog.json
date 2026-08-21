@@ -1,0 +1,52 @@
+{
+  "description": "Ordered discovery backlog. One candidate per scheduled cycle.",
+  "next_index": 1,
+  "candidates": [
+    {
+      "slug": "spacecoin",
+      "display_name": "Spacecoin",
+      "seeds": [
+        "https://www.spacecoin.org/",
+        "https://docs.spacecoin.org/llms.txt",
+        "https://docs.spacecoin.org/usdspace-token/staking.md",
+        "https://docs.spacecoin.org/spacerouter-proxy/overview.md",
+        "https://docs.spacecoin.org/spacerouter-proxy/proxy-provider-guide.md"
+      ],
+      "investigated_at": "2026-08-21",
+      "classification": "wrong-model",
+      "notes": "DePIN / satellite connectivity \u2014 capital vs operator model"
+    },
+    {
+      "slug": "decentralized-space",
+      "display_name": "Decentralized Space",
+      "seeds": [
+        "https://www.decentralized.space/",
+        "https://decentralized.space/",
+        "https://docs.decentralized.space/"
+      ],
+      "notes": "Space DePIN \u2014 capital provision vs node operation"
+    },
+    {
+      "slug": "mining-royalty-tokenization",
+      "display_name": "Mining royalty tokenization (category)",
+      "seeds": [
+        "https://www.vultisig.com/",
+        "https://mineralized.io/",
+        "https://www.tangible.store/",
+        "https://goldfinch.finance/"
+      ],
+      "notes": "Category probe: live capital-only mining royalty with public data?"
+    },
+    {
+      "slug": "tokenized-farmland",
+      "display_name": "Tokenized farmland (category)",
+      "seeds": [
+        "https://www.farmlandlp.com/",
+        "https://acretrader.com/",
+        "https://www.farmtogether.com/",
+        "https://harvestflow.io/"
+      ],
+      "notes": "Category probe: live farmland RWA with public economics?"
+    }
+  ]
+}
