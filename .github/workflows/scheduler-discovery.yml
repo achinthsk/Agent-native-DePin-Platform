@@ -1,19 +1,21 @@
 name: Scheduler discovery (one candidate)
 
-# Twice-weekly one-candidate discovery from scheduler/backlog.json,
-# plus on-demand workflow_dispatch with optional candidate_name.
+# Twice-weekly one-candidate discovery (Wed + Sat), plus on-demand
+# workflow_dispatch with optional candidate_name.
 # Opens a PR — never merges. Never touches Elmnts or execution/.
 
 on:
   schedule:
-    # Tuesday + Friday 14:00 UTC — see scheduler/DECISIONS.md
-    - cron: "0 14 * * 2,5"
+    # Wednesday + Saturday 14:00 UTC — see scheduler/DECISIONS.md
+    - cron: "0 14 * * 3,6"
   workflow_dispatch:
     inputs:
       candidate_name:
         description: >
-          Optional platform to investigate now (e.g. "Decen Space").
-          Leave blank to take the next item from scheduler/backlog.json.
+          Optional platform to investigate now (e.g. "Tokenized farmland").
+          Leave blank to take the next item from scheduler/backlog.json
+          (same as a scheduled run). Named overrides do NOT advance the
+          backlog pointer.
         required: false
         default: ""
         type: string
@@ -43,14 +45,19 @@ jobs:
         continue-on-error: true
         env:
           CANDIDATE_NAME: ${{ inputs.candidate_name }}
+          # schedule → scheduled; workflow_dispatch → manual
+          DISCOVERY_TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'scheduled' }}
         run: |
           set -euo pipefail
+          TRIGGER="${DISCOVERY_TRIGGER:-scheduled}"
           if [ -n "${CANDIDATE_NAME:-}" ]; then
-            echo "On-demand override: candidate_name=${CANDIDATE_NAME}"
-            python3 scheduler/run_discovery.py --candidate-name "${CANDIDATE_NAME}"
+            echo "Manual/override: candidate_name=${CANDIDATE_NAME} trigger=${TRIGGER}"
+            python3 scheduler/run_discovery.py \
+              --trigger "${TRIGGER}" \
+              --candidate-name "${CANDIDATE_NAME}"
           else
-            echo "No candidate_name — next backlog item"
-            python3 scheduler/run_discovery.py
+            echo "Backlog-order run (trigger=${TRIGGER})"
+            python3 scheduler/run_discovery.py --trigger "${TRIGGER}"
           fi
 
       - name: Guard — never touch Elmnts, execution/, adapters/, storage/
@@ -92,24 +99,25 @@ jobs:
 
           Status: **success**
 
+          - Named override — backlog pointer **not** advanced.
           - Same investigation rigor as a scheduled run.
           - Elmnts was not touched.
           - \`execution/\` was not invoked.
           - **Do not auto-merge** — human review required."
             else
               TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d)"
-              BODY="Automated one-candidate discovery from \`scheduler/backlog.json\`.
+              BODY="Backlog-order discovery (scheduled or manual with empty input).
 
           Status: **success**
 
-          - One candidate only (backlog pointer advanced when applicable).
+          - One candidate; backlog pointer advanced on success.
           - Elmnts was not touched.
           - \`execution/\` was not invoked.
           - **Do not auto-merge** — human review required."
             fi
           else
             TITLE="scheduler: discovery FAILED $(date -u +%Y-%m-%d)"
-            BODY="Automated discovery **failed** (see status log).
+            BODY="Discovery **failed** (see status log).
 
           - Elmnts was not touched.
           - \`execution/\` was not invoked.

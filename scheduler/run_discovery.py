@@ -196,16 +196,17 @@ def resolve_candidate(
     Resolve who to investigate.
 
     Returns (candidate, advance_backlog, meta).
-    - No override: next backlog item; advance on success.
-    - Override matching backlog at next_index: that item; advance on success.
-    - Override matching other backlog item: that item; do not advance.
-    - Override not on backlog: synthetic candidate; do not advance.
+
+    - No override (backlog-order): next backlog item; advance on success.
+    - Named override (any name, on backlog or synthetic): investigate that
+      candidate; **never** advance next_index — ad-hoc checks must not
+      skip queue order.
     """
     items = backlog.get("candidates") or []
     idx = int(backlog.get("next_index", 0))
     meta: dict[str, Any] = {
         "override": bool(candidate_name and candidate_name.strip()),
-        "next_index": idx,
+        "next_index_before": idx,
         "backlog_len": len(items),
     }
 
@@ -219,19 +220,22 @@ def resolve_candidate(
             )
         cand = items[idx]
         meta["source"] = "backlog_next"
+        meta["manual_mode"] = "backlog_order"
+        meta["advance_backlog"] = True
         return cand, True, meta
 
     matched = match_backlog_candidate(items, candidate_name)
     if matched is not None:
         cand, found_idx = matched
-        advance = found_idx == idx
         meta["source"] = "backlog_match"
         meta["matched_index"] = found_idx
-        meta["advance_backlog"] = advance
-        return cand, advance, meta
+        meta["manual_mode"] = "override"
+        meta["advance_backlog"] = False
+        return cand, False, meta
 
     cand = synthetic_candidate(candidate_name)
     meta["source"] = "synthetic_on_demand"
+    meta["manual_mode"] = "override"
     meta["advance_backlog"] = False
     return cand, False, meta
 
@@ -478,8 +482,18 @@ def main() -> int:
         default=None,
         help=(
             "Optional on-demand platform name. Investigates that candidate "
-            "immediately (need not be on backlog.json). Blank/omitted = "
-            "next backlog item."
+            "immediately (need not be on backlog.json) and does NOT advance "
+            "the backlog pointer. Blank/omitted = next backlog item."
+        ),
+    )
+    parser.add_argument(
+        "--trigger",
+        choices=("scheduled", "manual"),
+        default="manual",
+        help=(
+            "How this run was invoked. GitHub Actions sets scheduled for "
+            "cron and manual for workflow_dispatch. Default manual for "
+            "local CLI runs."
         ),
     )
     parser.add_argument(
@@ -494,12 +508,21 @@ def main() -> int:
     details: dict[str, Any] = {
         "dry_run": args.dry_run,
         "candidate_name_input": args.candidate_name,
+        "trigger": args.trigger,
     }
 
     try:
         backlog = load_backlog()
         candidate, advance, meta = resolve_candidate(backlog, args.candidate_name)
         details.update(meta)
+        # For scheduled runs, manual_mode is not applicable.
+        if args.trigger == "scheduled":
+            details["manual_mode"] = None
+        elif "manual_mode" not in details:
+            details["manual_mode"] = (
+                "override" if details.get("override") else "backlog_order"
+            )
+
         slug = candidate["slug"]
         details["candidate"] = slug
         details["display_name"] = candidate.get("display_name")
@@ -546,7 +569,10 @@ def main() -> int:
             print(f"Advanced backlog next_index -> {idx + 1}")
         else:
             details["next_index_after"] = backlog.get("next_index")
-            print("Backlog pointer unchanged (on-demand / non-next match)")
+            print(
+                "Backlog pointer unchanged "
+                f"(named override; next_index stays {backlog.get('next_index')})"
+            )
 
         details["findings_path"] = str(findings_path.relative_to(REPO_ROOT))
 
@@ -559,6 +585,10 @@ def main() -> int:
         )
         print(f"Wrote {findings_path}")
         print(f"Classification: {result['classification']}")
+        print(
+            f"trigger={args.trigger} manual_mode={details.get('manual_mode')} "
+            f"advance_backlog={advance}"
+        )
         return 0
 
     except Exception as e:

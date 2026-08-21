@@ -33,8 +33,9 @@ record for a future dashboard.
 | File | Cron (UTC) | Job |
 | --- | --- | --- |
 | `.github/workflows/scheduler-refresh.yml` | Sunday 14:00 | Glow + RealT refresh → PR |
-| `.github/workflows/scheduler-discovery.yml` | **Tue + Fri** 14:00 | One candidate → PR; `workflow_dispatch` + optional `candidate_name` |
+| `.github/workflows/scheduler-discovery.yml` | **Wed + Sat** 14:00 | One candidate → PR; `workflow_dispatch` + optional `candidate_name` |
 
 Refresh supports bare `workflow_dispatch`. Discovery supports
 `workflow_dispatch` with optional `candidate_name` (blank = next backlog
-item). Both create PRs only — never merge.
+item; named override does **not** advance `next_index`). Both create PRs
+only — never merge.

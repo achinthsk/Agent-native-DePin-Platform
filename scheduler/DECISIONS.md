@@ -42,18 +42,28 @@ produce near-duplicate snapshots.
 | Job | Cadence | Cron (UTC) | Why |
 | --- | --- | --- | --- |
 | **Asset refresh** (Glow + RealT) | **Weekly** | `0 14 * * 0` (Sunday 14:00) | Glow buckets finalize on a weekly rhythm; RealT rent is weekly. Weekly history is enough to build a real time series without looking like a scrape bot. |
-| **Discovery** (one candidate) | **Twice weekly** | `0 14 * * 2,5` (**Tuesday** + **Friday** 14:00) | Still one candidate per cycle (cost throttle), but twice a week clears a short backlog without waiting a full week between items. Tuesday/Friday are ~3 days apart — evenly spaced, not back-to-back — and sit clear of Sunday refresh so Actions failures stay distinguishable. |
+| **Discovery** (one candidate) | **Twice weekly** | `0 14 * * 3,6` (**Wednesday** + **Saturday** 14:00) | Keep the original Wednesday slot; add Saturday as the roughly opposite mid-week point (~3–4 days apart) so runs are evenly spaced rather than clustered. Still one candidate per cycle. Clear of Sunday refresh. |
 
-**On-demand discovery:** the discovery workflow also has `workflow_dispatch`
-with optional input `candidate_name`. When set, that platform is
-investigated immediately (need not be on `backlog.json`). When blank,
-behavior matches a scheduled run (next backlog item). Same investigation
-rigor and PR-only output either way. Refresh has no on-demand name input
-(out of scope).
+**On-demand discovery:** GitHub Actions **`workflow_dispatch`** remains the
+correct native mechanism for a manual “Run workflow” button with typed
+inputs (confirmed against current Actions docs / usage: optional string
+inputs default to `""` when blank). Discovery workflow exposes optional
+`candidate_name`:
 
-**Not chosen:** daily refresh (unnecessary for rent/solar); once-weekly
-discovery (too slow for a four-item backlog); adjacent cron days (clusters
-load and review).
+| Manual input | Behavior | Advances `next_index`? |
+| --- | --- | --- |
+| **Set** | Investigate that named candidate (need not be on backlog) | **No** — ad-hoc checks must not skip the queue |
+| **Empty** | Same as scheduled: next backlog item | **Yes** |
+
+Scheduled cron runs always use backlog order and advance the pointer.
+Same investigation rigor and PR-only output in every mode. Status log
+records `trigger` = `scheduled` \| `manual`, and for manual runs
+`manual_mode` = `backlog_order` \| `override`.
+
+Refresh has no on-demand name input (out of scope).
+
+**Not chosen:** daily refresh; once-weekly discovery; adjacent cron days
+(Tue/Fri clusters less cleanly than Wed/Sat opposite the week).
 
 ---
 
@@ -70,9 +80,13 @@ Compiled from project backlog items already identified for investigation
 | 3 | `mining-royalty-tokenization` | Mining royalty tokenization (category) | General category probe: is there a live capital-only royalty path with public data? |
 | 4 | `tokenized-farmland` | Tokenized farmland (category) | General category probe: live farmland RWA with public economics? |
 
-Pointer state lives in `scheduler/backlog.json` (`next_index`). Each
-successful discovery cycle advances it by one. Re-runs after the list is
-exhausted no-op loudly and log `backlog_exhausted`.
+Pointer state lives in `scheduler/backlog.json` (`next_index`). Only
+**backlog-order** runs (scheduled cron, or manual with empty
+`candidate_name`) advance it by one on success. A named on-demand
+override never advances the pointer — even if the name happens to match
+the next backlog item — so an ad-hoc check cannot silently skip queue
+order. Re-runs after the list is exhausted fail loudly and log
+`backlog_exhausted`.
 
 ---
 

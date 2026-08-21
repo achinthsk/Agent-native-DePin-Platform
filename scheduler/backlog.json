@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One candidate per scheduled cycle.",
-  "next_index": 2,
+  "next_index": 3,
   "candidates": [
     {
       "slug": "spacecoin",
@@ -27,7 +27,7 @@
       ],
       "investigated_at": "2026-08-21",
       "classification": "not-yet-investable",
-      "notes": "Space DePIN ground-station marketplace — capital vs operator model"
+      "notes": "Space DePIN ground-station marketplace \u2014 capital vs operator model"
     },
     {
       "slug": "mining-royalty-tokenization",
@@ -38,7 +38,9 @@
         "https://www.tangible.store/",
         "https://goldfinch.finance/"
       ],
-      "notes": "Category probe: live capital-only mining royalty with public data?"
+      "notes": "Category probe: live capital-only mining royalty with public data?",
+      "investigated_at": "2026-08-21",
+      "classification": "insufficient-information"
     },
     {
       "slug": "tokenized-farmland",
@@ -49,7 +51,9 @@
         "https://www.farmtogether.com/",
         "https://harvestflow.io/"
       ],
-      "notes": "Category probe: live farmland RWA with public economics?"
+      "notes": "Category probe: live farmland RWA with public economics?",
+      "investigated_at": "2026-08-21",
+      "classification": "insufficient-information"
     }
   ]
 }

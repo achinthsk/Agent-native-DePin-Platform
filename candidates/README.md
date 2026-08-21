@@ -65,6 +65,8 @@ by the API.
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| Mining royalty tokenization (category) | `insufficient-information` | 2026-08-21 | [`mining-royalty-tokenization/FINDINGS.md`](./mining-royalty-tokenization/FINDINGS.md) |
+| Tokenized farmland (category) | `insufficient-information` | 2026-08-21 | [`tokenized-farmland/FINDINGS.md`](./tokenized-farmland/FINDINGS.md) |
 | Decentralized Space / Decen Space | `not-yet-investable` | 2026-08-21 | [`decentralized-space/FINDINGS.md`](./decentralized-space/FINDINGS.md) |
 | Spacecoin | `wrong-model` | 2026-08-21 | [`spacecoin/FINDINGS.md`](./spacecoin/FINDINGS.md) |
 | Aethir | `wrong-model` | 2026-08-19 | [`aethir/FINDINGS.md`](./aethir/FINDINGS.md) |

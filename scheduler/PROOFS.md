@@ -94,43 +94,55 @@ python3 scheduler/run_refresh.py --break-gca
 
 ## 5. Twice-weekly schedule + on-demand `candidate_name` (follow-up)
 
-### Cron (both days) in `.github/workflows/scheduler-discovery.yml`
+### Cron (Wed + Sat) in `.github/workflows/scheduler-discovery.yml`
 
 ```yaml
 schedule:
-  # Tuesday + Friday 14:00 UTC — see scheduler/DECISIONS.md
-  - cron: "0 14 * * 2,5"
+  # Wednesday + Saturday 14:00 UTC — see scheduler/DECISIONS.md
+  - cron: "0 14 * * 3,6"
 workflow_dispatch:
   inputs:
     candidate_name:
-      description: >
-        Optional platform to investigate now (e.g. "Decen Space").
-        Leave blank to take the next item from scheduler/backlog.json.
       required: false
       default: ""
       type: string
 ```
 
-### On-demand Decen Space
+`workflow_dispatch` remains the native GitHub Actions “Run workflow”
+mechanism (optional string inputs default to `""` when blank).
+
+### Pointer rules
+
+| Run | Advances `next_index`? |
+| --- | --- |
+| Named override (`--candidate-name` set) | **No** |
+| Empty / scheduled backlog-order | **Yes** |
+
+### Proof A — manual override (not next in backlog)
+
+Before: `next_index=2` (next = mining-royalty).  
+Override target = **Tokenized farmland** (backlog index 3).
 
 ```bash
-python3 scheduler/run_discovery.py --candidate-name "Decen Space"
+python3 scheduler/run_discovery.py --trigger manual --candidate-name "Tokenized farmland"
 ```
 
-- Matched backlog slug `decentralized-space` (fuzzy: Decen Space ↔ Decentralized Space)
-- Wrote `candidates/decentralized-space/FINDINGS.md`
-- Classification: **`not-yet-investable`** (real early DePIN; no live public
-  docs/API/token path; intended supply side is ground-station hardware)
-- Backlog `next_index` advanced `1 → 2` (was the next backlog item)
+- Wrote `candidates/tokenized-farmland/FINDINGS.md` → **`insufficient-information`**
+- Status: `trigger=manual`, `manual_mode=override`, `advance_backlog=false`
+- After: `next_index=2` (**unchanged**)
 
-### Empty-input fallback still works
-
-With `next_index=2` after the on-demand run:
+### Proof B — manual empty input (backlog-order)
 
 ```bash
-python3 scheduler/run_discovery.py --dry-run   # no --candidate-name
+python3 scheduler/run_discovery.py --trigger manual
 ```
 
-Resolves to **`mining-royalty-tokenization`** / “Mining royalty tokenization
-(category)” — same as a scheduled run or a blank `workflow_dispatch`
-`candidate_name`. Dry-run did not advance the pointer.
+- Pulled **mining-royalty-tokenization** (the real next item)
+- Wrote `candidates/mining-royalty-tokenization/FINDINGS.md` → **`insufficient-information`**
+- Status: `trigger=manual`, `manual_mode=backlog_order`, `advance_backlog=true`
+- After: `next_index=3`
+
+### Status log labels
+
+Both runs append JSONL with `details.trigger` and `details.manual_mode`
+for a future dashboard.
