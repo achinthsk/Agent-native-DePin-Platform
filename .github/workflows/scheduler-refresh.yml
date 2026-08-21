@@ -29,11 +29,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install adapter deps
+      - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          # Glow needs web3 + dotenv; RealT needs dotenv (stdlib urllib otherwise).
-          python3 -m pip install "web3>=6,<8" python-dotenv
+          python3 -m pip install -r requirements.txt
 
       - name: Run refresh cycle
         id: refresh
