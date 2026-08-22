@@ -73,12 +73,23 @@ Compiled from project backlog items already identified for investigation
 (not from inventing new names). Aethir is **already** investigated
 (`candidates/aethir/FINDINGS.md`) and is **not** re-queued.
 
-| Order | Slug | What | Notes |
+**Rule (learned 2026-08-21):** backlog entries must be **named platforms**,
+not bare categories. Category probes for “mining royalty tokenization” and
+“tokenized farmland” both returned `insufficient-information` because the
+queue asked “is there anything in this bucket?” against mismatched /
+non-issuer seeds — the same failure mode as queuing “GPU compute DePIN”
+instead of “Aethir”. Those two category rows are **closed**; named
+replacements follow.
+
+| Order | Slug | What | Status |
 | --- | --- | --- | --- |
-| 1 | `spacecoin` | Spacecoin | DePIN / satellite connectivity capital question |
-| 2 | `decentralized-space` | Decen Space | Space DePIN ground-station marketplace — capital vs operator |
-| 3 | `mining-royalty-tokenization` | Mining royalty tokenization (category) | General category probe: is there a live capital-only royalty path with public data? |
-| 4 | `tokenized-farmland` | Tokenized farmland (category) | General category probe: live farmland RWA with public economics? |
+| 1 | `spacecoin` | Spacecoin | Done — `wrong-model` |
+| 2 | `decentralized-space` | Decen Space | Done — `not-yet-investable` |
+| 3 | `mining-royalty-tokenization` | *(category probe)* | Closed — `insufficient-information` |
+| 4 | `tokenized-farmland` | *(category probe)* | Closed — `insufficient-information` |
+| 5 | `ptx` | **PTX** (NSR mining royalty tokens) | Queued — named replacement for mining category |
+| 6 | `agrifi` | **AgriFi** (farmland / ag RWA) | Queued — named replacement for farmland category |
+| 7 | `agro-digital-token` | **Agro Digital Token** (plantation RWA) | Queued — second named farmland candidate |
 
 Pointer state lives in `scheduler/backlog.json` (`next_index`). Only
 **backlog-order** runs (scheduled cron, or manual with empty
@@ -87,6 +98,9 @@ override never advances the pointer — even if the name happens to match
 the next backlog item — so an ad-hoc check cannot silently skip queue
 order. Re-runs after the list is exhausted fail loudly and log
 `backlog_exhausted`.
+
+Current `next_index` after the category closures: **4** (next scheduled /
+empty-manual run = **PTX**).
 
 ---
 

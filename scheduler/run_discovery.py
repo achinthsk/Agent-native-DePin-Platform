@@ -10,8 +10,9 @@ way — seed fetch + FINDINGS.md + README index; PR-only, no auto-merge.
 Never touches execution/. Never refreshes Elmnts.
 
 Usage:
-  python3 scheduler/run_discovery.py
-  python3 scheduler/run_discovery.py --candidate-name "Decen Space"
+  python3 scheduler/run_discovery.py --trigger scheduled
+  python3 scheduler/run_discovery.py --trigger manual
+  python3 scheduler/run_discovery.py --trigger manual --candidate-name "Tokenized farmland"
   python3 scheduler/run_discovery.py --dry-run
 """
 

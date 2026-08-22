@@ -77,3 +77,25 @@ before a stronger disposition.
 - Trigger: **`manual`** / **`backlog_order`** (empty `candidate_name`).
 - `next_index` advanced `2 → 3` (next scheduled/empty run = tokenized-farmland,
   already investigated via named override — human may skip or re-check).
+
+---
+
+## Why this landed as `insufficient-information` (root cause)
+
+**Primarily a backlog-shape problem, not shallow investigation of a named
+issuer.**
+
+The item was a **bare category** (“mining royalty tokenization”). Seeds did
+not point at a mining-royalty company: Vultisig is an MPC wallet,
+mineralized.io does not resolve, Tangible is treasuries/real-estate RWA,
+Goldfinch is private credit (and shutting down Prime). There was no Aethir-
+equivalent official surface for “the” mining-royalty protocol to investigate.
+
+What *could* be determined: these seeds are not mining-royalty products.
+
+What *could not* be determined: whether any live named mining-royalty
+tokenizer has capital-only public economics — because the backlog never
+named one.
+
+**Follow-up:** `scheduler/backlog.json` now queues **PTX** (Net Smelter
+Royalty tokenization) as the named replacement for this category.

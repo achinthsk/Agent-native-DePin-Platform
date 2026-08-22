@@ -100,3 +100,29 @@ cycle.
 - Trigger: **`manual`** / **`override`** (`candidate_name` set).
 - Backlog `next_index` **unchanged** (was 2 / mining-royalty next).
 - Same four classifications and PR-only review rule as scheduled runs.
+
+---
+
+## Why this landed as `insufficient-information` (root cause)
+
+**Primarily a backlog-shape problem, not shallow investigation of a named
+issuer.**
+
+Unlike Aethir / Spacecoin (single companies with official docs, contracts,
+and a clear participation surface), this queue item was a **bare category**
+(“tokenized farmland”) with seeds that were mostly **traditional accredited
+farmland platforms** (FarmTogether, Farmland LP) plus a **crypto lending**
+site (HarvestFlow) that is not farmland RWA. Checking those pages more
+deeply would still not produce an Aethir-style classification of one
+tokenized issuer — there was no single official doc set / contract surface
+to dig into.
+
+What *could* be determined from the seeds: capital-only farmland investing
+exists in private markets; none of the reachable seeds exposed a public
+on-chain farmland token + rent/yield API at the Glow/RealT bar.
+
+What *could not* be determined: whether any **specific** tokenized-farmland
+issuer meets this platform’s bar — because none was named on the backlog.
+
+**Follow-up:** `scheduler/backlog.json` now queues named replacements
+(**AgriFi**, **Agro Digital Token**) instead of the bare category.
