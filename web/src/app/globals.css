@@ -1,48 +1,82 @@
 @import "tailwindcss";
 
+/*
+  v2 tokens — Kokonut-style neutral product UI + Bklit chart density.
+  Replaces paper/ink/oxide editorial register.
+*/
+
 @theme inline {
-  --color-paper: #f4f0e8;
-  --color-panel: #fbf8f2;
-  --color-ink: #161412;
-  --color-muted: #6b645a;
-  --color-rule: #c9c1b4;
-  --color-oxide: #7a3e2e;
-  --color-proof: #1e4a3a;
-  --color-unverified: #8a5a1e;
-  --color-chart: #2a4560;
-  --font-sans: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui,
-    sans-serif;
-  --font-serif: var(--font-newsreader), "Newsreader", ui-serif, Georgia, serif;
-  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --color-background: #fafafa;
+  --color-foreground: #09090b;
+  --color-card: #ffffff;
+  --color-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-accent: #18181b;
+  --color-proof: #059669;
+  --color-proof-fg: #ecfdf5;
+  --color-unverified: #d97706;
+  --color-chart: #2563eb;
+  --color-danger: #dc2626;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 :root {
-  --paper: #f4f0e8;
-  --panel: #fbf8f2;
-  --ink: #161412;
-  --muted: #6b645a;
-  --rule: #c9c1b4;
-  --oxide: #7a3e2e;
-  --proof: #1e4a3a;
-  --unverified: #8a5a1e;
-  --chart: #2a4560;
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --accent: #18181b;
+  --proof: #059669;
+  --proof-fg: #ecfdf5;
+  --unverified: #d97706;
+  --chart: #2563eb;
+  --danger: #dc2626;
+  --paper: var(--background);
+  --panel: var(--card);
+  --ink: var(--foreground);
+  --rule: var(--border);
+  --oxide: var(--accent);
 }
 
 @layer base {
   * {
-    border-color: var(--rule);
+    border-color: var(--border);
   }
   html {
     scroll-behavior: smooth;
   }
   body {
-    background-color: var(--paper);
-    color: var(--ink);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01" on, "kern" on;
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: color-mix(in srgb, var(--oxide) 28%, transparent);
+    background: color-mix(in srgb, var(--chart) 22%, transparent);
+  }
+}
+
+/* Kokonut-like surface */
+@layer utilities {
+  .surface-card {
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--card) 92%, #f4f4f5),
+      var(--card)
+    );
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .surface-card:hover {
+    border-color: color-mix(in srgb, var(--foreground) 18%, var(--border));
+    box-shadow:
+      0 8px 24px rgb(0 0 0 / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.04);
   }
 }

@@ -24,11 +24,14 @@ function shortDate(iso?: string) {
   }
 }
 
+/** Bklit-inspired history chart — never invents a trend from &lt;2 points. */
 export function HistoryChart({ history }: { history: ScoredAsset[] }) {
   const points = useMemo(() => {
     return [...history]
       .sort((a, b) =>
-        String(a.data_pulled_at || "").localeCompare(String(b.data_pulled_at || "")),
+        String(a.data_pulled_at || "").localeCompare(
+          String(b.data_pulled_at || ""),
+        ),
       )
       .map((a) => ({
         date: shortDate(a.data_pulled_at),
@@ -58,11 +61,11 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
     const only = points[0];
     const v = seriesKey === "yield" ? only.yield : only.risk;
     return (
-      <div className="border border-dashed border-[var(--rule)] bg-[var(--paper)] px-3 py-4">
-        <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+      <div className="rounded-lg border border-dashed border-[var(--border)] bg-zinc-50/80 px-3 py-4">
+        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
           Snapshot history
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]">
+        <p className="mt-2 text-sm leading-relaxed text-zinc-700">
           {points.length === 1 ? "Single" : "Insufficient distinct"} API
           snapshot{points.length === 1 ? "" : "s"} for a series
           {only?.date ? (
@@ -87,7 +90,7 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
           {seriesLabel}
         </div>
         <div className="font-mono text-[10px] text-[var(--muted)]">
@@ -102,7 +105,7 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
         >
           <CartesianGrid
             vertical={false}
-            stroke="var(--rule)"
+            stroke="var(--border)"
             strokeDasharray="3 3"
           />
           <XAxis
@@ -124,9 +127,9 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
             dataKey={seriesKey}
             type="monotone"
             fill={`var(--color-${seriesKey})`}
-            fillOpacity={0.08}
+            fillOpacity={0.1}
             stroke={`var(--color-${seriesKey})`}
-            strokeWidth={1.75}
+            strokeWidth={2}
             dot={{ r: 3, fill: "var(--chart)", strokeWidth: 0 }}
             isAnimationActive
             animationDuration={900}

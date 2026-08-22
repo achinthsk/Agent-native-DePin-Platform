@@ -17,7 +17,7 @@ function AnimatedNumber({
   const [display, setDisplay] = useState("—");
 
   useEffect(() => {
-    const t = window.setTimeout(() => setReady(true), 120);
+    const t = window.setTimeout(() => setReady(true), 80);
     return () => window.clearTimeout(t);
   }, []);
 
@@ -34,7 +34,7 @@ function AnimatedNumber({
     }
     const target = value;
     const start = performance.now();
-    const duration = 700;
+    const duration = 750;
     let frame = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
@@ -49,7 +49,7 @@ function AnimatedNumber({
   return (
     <span
       ref={ref}
-      className="font-mono text-2xl tabular-nums tracking-tight text-[var(--ink)]"
+      className="font-mono text-2xl font-medium tabular-nums tracking-tight text-[var(--foreground)]"
     >
       {display}
     </span>
@@ -68,7 +68,7 @@ const AXES: { key: keyof Scores; label: string; hint: string }[] = [
   {
     key: "risk_score",
     label: "Risk quality",
-    hint: "higher is better (safer ↑)",
+    hint: "higher is better · safer ↑",
   },
   { key: "liquidity_score", label: "Liquidity", hint: "higher is better" },
   {
@@ -78,37 +78,36 @@ const AXES: { key: keyof Scores; label: string; hint: string }[] = [
   },
 ];
 
+/** Bklit-style KPI strip: dense mono figures in a 4-up grid. */
 export function ScoreStrip({ scores }: { scores: Scores }) {
   return (
-    <div className="grid grid-cols-2 gap-px bg-[var(--rule)] sm:grid-cols-4">
-      {AXES.map((axis) => {
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+      {AXES.map((axis, i) => {
         const score = scores[axis.key];
         return (
           <motion.div
             key={axis.key}
             layout
-            className="bg-[var(--panel)] px-3 py-3"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.35 }}
+            className="rounded-lg border border-[var(--border)] bg-white/80 px-3 py-3"
           >
-            <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
               {axis.label}
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
+            <div className="mt-1.5 flex items-baseline gap-1.5">
               <AnimatedNumber
                 value={score?.value}
                 insufficient={score?.insufficient_data}
               />
               <span className="font-mono text-[10px] text-[var(--muted)]">
-                / 100
+                /100
               </span>
             </div>
-            <div className="mt-1 text-[10px] text-[var(--muted)]">
+            <div className="mt-1 text-[10px] leading-snug text-[var(--muted)]">
               {axis.hint}
             </div>
-            {score?.direction ? (
-              <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-[var(--muted)]">
-                {score.direction.replace(/_/g, " ")}
-              </div>
-            ) : null}
           </motion.div>
         );
       })}

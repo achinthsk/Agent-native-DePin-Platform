@@ -41,18 +41,16 @@ export function AssetPanel({
   }, [asset.asset_id, apiBase]);
 
   return (
-    <motion.article
-      layout
-      className="border border-[var(--rule)] bg-[var(--panel)]"
-    >
-      <header className="flex flex-col gap-3 border-b border-[var(--rule)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+    <motion.article layout className="surface-card overflow-hidden">
+      <header className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="font-serif text-xl leading-snug text-[var(--ink)]">
+          <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
             {asset.name}
           </h3>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-[var(--muted)]">
-            <span>{asset.asset_id}</span>
-            <span aria-hidden>·</span>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-[var(--muted)]">
+            <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-zinc-700">
+              {asset.asset_id}
+            </span>
             <span>{asset.asset_class}</span>
             <span aria-hidden>·</span>
             <span>{asset.source_platform}</span>
@@ -70,14 +68,14 @@ export function AssetPanel({
         }}
       />
 
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
         {peak !== null ? (
-          <p className="text-sm leading-relaxed text-[var(--ink)]">
+          <p className="text-sm leading-relaxed text-[var(--foreground)]">
             Emission-token peak decline from live{" "}
-            <span className="font-mono">risk_score</span> inputs:{" "}
-            <span className="font-mono">−{peak.toFixed(1)}%</span> from peak.
-            Risk-quality axis remains higher-is-better; this input lowers that
-            score.
+            <span className="font-mono text-[12px]">risk_score</span> inputs:{" "}
+            <span className="font-mono text-[12px]">−{peak.toFixed(1)}%</span>{" "}
+            from peak. Risk-quality axis remains higher-is-better; this input
+            lowers that score.
           </p>
         ) : null}
 
@@ -87,7 +85,7 @@ export function AssetPanel({
               key="err"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-sm text-[var(--oxide)]"
+              className="text-sm text-[var(--danger)]"
             >
               History fetch failed: {error}
             </motion.p>
@@ -103,9 +101,9 @@ export function AssetPanel({
           ) : (
             <motion.div
               key="chart"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
             >
               <HistoryChart history={history} />
             </motion.div>
