@@ -22,7 +22,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -172,13 +174,23 @@ app = FastAPI(
     description=(
         "Read-only scored snapshots via scoring.engine. "
         "Descriptive and comparative only — not investment advice. "
-        "HTTPS production hosting; Streamable HTTP MCP at /mcp."
+        "HTTPS production hosting; Streamable HTTP MCP at /mcp. "
+        "Public scored-assets UI at / (static export from web/)."
     ),
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
     redirect_slashes=False,
 )
 app.add_middleware(AccessControlMiddleware)
+# CORS outermost so browser preflights succeed before rate-limit/logging.
+# Read-only GET surface only — does not widen mutation.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "HEAD", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"],
+)
 
 
 @app.get("/healthz")
@@ -305,6 +317,16 @@ def owner_dashboard(request: Request) -> Response:
 # Mount Streamable HTTP MCP. Parent lifespan runs session_manager
 # (mounted sub-app lifespans do not run — see SDK /run/asgi/).
 app.mount("/mcp", _mcp_http)
+
+# Public scored-assets page (Next static export). Registered last so /v1,
+# /healthz, /mcp, and /owner routes take precedence.
+_STATIC_UI = ROOT / "web" / "out"
+if _STATIC_UI.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=str(_STATIC_UI), html=True),
+        name="scored-assets-ui",
+    )
 
 
 def main() -> None:
