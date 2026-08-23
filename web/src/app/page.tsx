@@ -48,9 +48,14 @@ function githubBlob(path: string) {
 }
 
 function apiUrl(base: string, path: string): string {
-  if (!base) return path.startsWith("http") ? path : `${LIVE_API_FALLBACK}${path}`;
+  if (!base) {
+    return path.startsWith("http") ? path : `${LIVE_API_FALLBACK}${path}`;
+  }
   return `${base}${path}`;
 }
+
+const selectClass =
+  "h-9 rounded-lg border border-[var(--border)] bg-white px-3 font-mono text-[11px] text-[var(--foreground)] outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200";
 
 export default function HomePage() {
   const [apiBase] = useState(() => resolveApiBase());
@@ -120,82 +125,90 @@ export default function HomePage() {
   const displayBase = apiBase || LIVE_API_FALLBACK;
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-[960px] px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-        <header className="border-b border-[var(--rule)] pb-10">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-            Agent-native DePIN Platform
-          </p>
-          <h1 className="mt-3 font-serif text-4xl leading-[1.1] tracking-tight text-[var(--ink)] sm:text-5xl">
+    <div className="relative min-h-screen overflow-x-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_#ffffff_0%,_#f4f4f5_55%,_#fafafa_100%)]"
+      />
+
+      <div className="mx-auto max-w-5xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="pb-10"
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)] shadow-sm backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Live API · read-only
+          </div>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl">
             Scored Assets
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--ink)] sm:text-lg">
-            Agent-native verification and four-axis scoring for tokenized
-            DePIN and RWA assets — read-only view of the live public API.
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-zinc-600 sm:text-[17px]">
+            Agent-native verification and four-axis scoring for tokenized DePIN
+            and RWA assets — same numbers as the public API.
           </p>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
-            Descriptive and comparative only. Not investment advice. Scores
-            are never blended into a single ranking number.
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
+            Descriptive and comparative only. Not investment advice. Scores are
+            never blended into a single ranking number.
           </p>
-          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] text-[var(--muted)]">
+          <div className="mt-6 flex flex-wrap gap-2">
             <a
-              className="text-[var(--oxide)] underline-offset-4 hover:underline"
               href={displayBase}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-lg bg-zinc-900 px-3 py-1.5 font-mono text-[11px] text-white transition hover:bg-zinc-800"
             >
               {displayBase.replace(/^https?:\/\//, "")}
             </a>
             <a
-              className="underline-offset-4 hover:underline"
               href={apiUrl(apiBase, "/v1/assets")}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 font-mono text-[11px] text-zinc-700 transition hover:border-zinc-400"
             >
               /v1/assets
             </a>
             <a
-              className="underline-offset-4 hover:underline"
               href={apiUrl(apiBase, "/docs")}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 font-mono text-[11px] text-zinc-700 transition hover:border-zinc-400"
             >
               OpenAPI
             </a>
             <a
-              className="underline-offset-4 hover:underline"
               href={apiUrl(apiBase, "/mcp")}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 font-mono text-[11px] text-zinc-700 transition hover:border-zinc-400"
             >
               MCP
             </a>
             <a
-              className="underline-offset-4 hover:underline"
               href={GITHUB_REPO}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 font-mono text-[11px] text-zinc-700 transition hover:border-zinc-400"
             >
               GitHub
             </a>
           </div>
-        </header>
+        </motion.header>
 
-        <section
-          className="border-b border-[var(--rule)] py-12"
-          aria-labelledby="assets-heading"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <section aria-labelledby="assets-heading" className="py-4">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2
                 id="assets-heading"
-                className="font-serif text-2xl tracking-tight text-[var(--ink)]"
+                className="text-2xl font-semibold tracking-tight"
               >
                 Live assets
               </h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 Every scored asset from{" "}
-                <span className="font-mono">GET /v1/assets</span>
+                <span className="font-mono text-[12px]">GET /v1/assets</span>
                 {loading ? "" : ` · ${assets.length} matched`}.
               </p>
             </div>
@@ -211,7 +224,7 @@ export default function HomePage() {
                     setTierFilter(e.target.value as TierFilter),
                   )
                 }
-                className="border border-[var(--rule)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[11px] text-[var(--ink)] outline-none focus:border-[var(--oxide)]"
+                className={selectClass}
               >
                 <option value="all">All tiers</option>
                 <option value="proof">On-chain / audited proof</option>
@@ -226,7 +239,7 @@ export default function HomePage() {
                 onChange={(e) =>
                   startTransition(() => setSortKey(e.target.value as SortKey))
                 }
-                className="border border-[var(--rule)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[11px] text-[var(--ink)] outline-none focus:border-[var(--oxide)]"
+                className={selectClass}
               >
                 <option value="asset_id">Sort: asset id</option>
                 <option value="risk_score">Sort: risk quality ↓</option>
@@ -239,30 +252,30 @@ export default function HomePage() {
           </div>
 
           {error ? (
-            <p className="mt-8 border border-[var(--oxide)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--oxide)]">
+            <p className="surface-card mb-6 px-4 py-3 text-sm text-[var(--danger)]">
               Could not load live API: {error}
             </p>
           ) : null}
 
           {loading ? (
-            <p className="mt-8 font-mono text-xs text-[var(--muted)]">
+            <p className="font-mono text-xs text-[var(--muted)]">
               Fetching /v1/assets…
             </p>
           ) : (
             <LayoutGroup>
               <motion.div
                 layout
-                className={`mt-8 space-y-5 ${isPending ? "opacity-80" : ""}`}
+                className={`space-y-4 ${isPending ? "opacity-80" : ""}`}
               >
                 <AnimatePresence mode="popLayout">
                   {visible.map((asset) => (
                     <motion.div
                       key={asset.asset_id}
                       layout
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     >
                       <AssetPanel asset={asset} apiBase={apiBase} />
                     </motion.div>
@@ -278,7 +291,7 @@ export default function HomePage() {
           )}
 
           {notes.length > 0 ? (
-            <ul className="mt-6 space-y-1 border-t border-[var(--rule)] pt-4 font-mono text-[10px] text-[var(--muted)]">
+            <ul className="mt-6 space-y-1 font-mono text-[10px] text-[var(--muted)]">
               {notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}
@@ -286,43 +299,46 @@ export default function HomePage() {
           ) : null}
         </section>
 
-        <section
-          className="border-b border-[var(--rule)] py-12"
-          aria-labelledby="findings-heading"
-        >
+        <section aria-labelledby="findings-heading" className="py-12">
           <h2
             id="findings-heading"
-            className="font-serif text-2xl tracking-tight text-[var(--ink)]"
+            className="text-2xl font-semibold tracking-tight"
           >
             Recent findings
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-            Investigation log excerpts from the repository — classification
-            and structural facts, not live scores. Scores above come only
-            from the API.
+            Investigation log excerpts from the repository — classification and
+            structural facts, not live scores.
           </p>
-          <ol className="mt-8 space-y-0 divide-y divide-[var(--rule)] border-y border-[var(--rule)]">
-            {FINDINGS.map((f) => (
-              <li key={f.id} className="py-6">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <ol className="mt-6 space-y-3">
+            {FINDINGS.map((f, i) => (
+              <motion.li
+                key={f.id}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ delay: i * 0.05 }}
+                className="surface-card px-4 py-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
                   <time
                     dateTime={f.date}
                     className="font-mono text-[11px] text-[var(--muted)]"
                   >
                     {f.date}
                   </time>
-                  <span className="border border-[var(--rule)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--ink)]">
+                  <span className="rounded-full border border-[var(--border)] bg-zinc-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-700">
                     {f.classification}
                   </span>
                 </div>
-                <h3 className="mt-2 font-serif text-xl text-[var(--ink)]">
+                <h3 className="mt-2 text-lg font-semibold tracking-tight">
                   {f.title}
                 </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--ink)]">
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
                   {f.summary}
                 </p>
                 <a
-                  className="mt-3 inline-block font-mono text-[11px] text-[var(--oxide)] underline-offset-4 hover:underline"
+                  className="mt-3 inline-flex font-mono text-[11px] text-zinc-900 underline-offset-4 hover:underline"
                   href={
                     f.id === "spacecoin-wrong-model"
                       ? `${GITHUB_REPO}/blob/cursor/scheduler-refresh-discovery-c7dd/${f.source_path}`
@@ -333,23 +349,23 @@ export default function HomePage() {
                 >
                   {f.source_label} →
                 </a>
-              </li>
+              </motion.li>
             ))}
           </ol>
         </section>
 
-        <section className="py-12" aria-labelledby="methodology-heading">
+        <section aria-labelledby="methodology-heading" className="py-4">
           <h2
             id="methodology-heading"
-            className="font-serif text-2xl tracking-tight text-[var(--ink)]"
+            className="text-2xl font-semibold tracking-tight"
           >
             Methodology
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Pulled from{" "}
-            <span className="font-mono">
+            <span className="font-mono text-[12px]">
               GET /v1/methodology?format=summary
-            </span>
+            </span>{" "}
             — not rewritten here.
           </p>
 
@@ -360,20 +376,17 @@ export default function HomePage() {
           ) : null}
 
           {fourScores ? (
-            <div className="mt-8 space-y-6">
-              <ul className="space-y-4">
+            <div className="mt-6 space-y-4">
+              <ul className="grid gap-3 sm:grid-cols-2">
                 {fourScores.four_scores.map((s) => (
-                  <li
-                    key={s.name}
-                    className="border-l-2 border-[var(--oxide)] pl-4"
-                  >
-                    <div className="font-mono text-[12px] text-[var(--ink)]">
+                  <li key={s.name} className="surface-card px-4 py-4">
+                    <div className="font-mono text-[12px] font-medium">
                       {s.name}
                     </div>
-                    <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
                       {s.direction.replace(/_/g, " ")}
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]">
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-600">
                       {s.summary}
                     </p>
                   </li>
@@ -390,25 +403,22 @@ export default function HomePage() {
                 </p>
               ) : null}
               {methodology?.notes?.map((n) => (
-                <p
-                  key={n}
-                  className="font-mono text-[10px] text-[var(--muted)]"
-                >
+                <p key={n} className="font-mono text-[10px] text-[var(--muted)]">
                   {n}
                 </p>
               ))}
-              <div className="flex flex-wrap gap-4 font-mono text-[11px]">
+              <div className="flex flex-wrap gap-3 font-mono text-[11px]">
                 <a
-                  className="text-[var(--oxide)] underline-offset-4 hover:underline"
+                  className="rounded-lg bg-zinc-900 px-3 py-1.5 text-white hover:bg-zinc-800"
                   href={apiUrl(apiBase, "/v1/methodology?format=markdown")}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Full methodology (markdown) →
+                  Full methodology →
                 </a>
                 {methodology?.methodology_path ? (
                   <a
-                    className="underline-offset-4 hover:underline"
+                    className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 hover:border-zinc-400"
                     href={githubBlob(methodology.methodology_path)}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -421,11 +431,11 @@ export default function HomePage() {
           ) : null}
         </section>
 
-        <footer className="border-t border-[var(--rule)] pt-8 font-mono text-[11px] text-[var(--muted)]">
+        <footer className="mt-12 border-t border-[var(--border)] pt-8 font-mono text-[11px] text-[var(--muted)]">
           <p>
             Source of truth:{" "}
             <a
-              className="text-[var(--oxide)] underline-offset-4 hover:underline"
+              className="text-[var(--foreground)] underline-offset-4 hover:underline"
               href={apiUrl(apiBase, "/v1/assets")}
               target="_blank"
               rel="noopener noreferrer"
