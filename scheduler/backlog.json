@@ -1,0 +1,91 @@
+{
+  "description": "Ordered discovery backlog. One named candidate per scheduled cycle — not bare categories.",
+  "next_index": 4,
+  "candidates": [
+    {
+      "slug": "spacecoin",
+      "display_name": "Spacecoin",
+      "seeds": [
+        "https://www.spacecoin.org/",
+        "https://docs.spacecoin.org/llms.txt",
+        "https://docs.spacecoin.org/usdspace-token/staking.md",
+        "https://docs.spacecoin.org/spacerouter-proxy/overview.md",
+        "https://docs.spacecoin.org/spacerouter-proxy/proxy-provider-guide.md"
+      ],
+      "investigated_at": "2026-08-21",
+      "classification": "wrong-model",
+      "notes": "DePIN / satellite connectivity — capital vs operator model"
+    },
+    {
+      "slug": "decentralized-space",
+      "display_name": "Decen Space",
+      "seeds": [
+        "https://decenspace.com/",
+        "https://github.com/DecenSpace",
+        "https://outlierventures.io/article/meet-the-next-wave-of-depin-pioneers-announcing-the-startups-in-base-camp-2/",
+        "https://www.aviaspace-bremen.de/en/2025/11/04/decen-space-the-future-of-satellite-ground-operations/"
+      ],
+      "investigated_at": "2026-08-21",
+      "classification": "not-yet-investable",
+      "notes": "Space DePIN ground-station marketplace — capital vs operator model"
+    },
+    {
+      "slug": "mining-royalty-tokenization",
+      "display_name": "Mining royalty tokenization (category)",
+      "seeds": [
+        "https://www.vultisig.com/",
+        "https://mineralized.io/",
+        "https://www.tangible.store/",
+        "https://goldfinch.finance/"
+      ],
+      "notes": "CLOSED category probe — insufficient-information. Replaced by named issuers below (PTX).",
+      "investigated_at": "2026-08-21",
+      "classification": "insufficient-information",
+      "status": "closed-category-probe"
+    },
+    {
+      "slug": "tokenized-farmland",
+      "display_name": "Tokenized farmland (category)",
+      "seeds": [
+        "https://www.farmlandlp.com/",
+        "https://acretrader.com/",
+        "https://www.farmtogether.com/",
+        "https://harvestflow.io/"
+      ],
+      "notes": "CLOSED category probe — insufficient-information. Replaced by named issuers below (AgriFi, Agro Digital Token).",
+      "investigated_at": "2026-08-21",
+      "classification": "insufficient-information",
+      "status": "closed-category-probe"
+    },
+    {
+      "slug": "ptx",
+      "display_name": "PTX",
+      "seeds": [
+        "https://ptxtoken.com/",
+        "https://ptxtoken.com/#how-it-works",
+        "https://ptxtoken.com/#nsr"
+      ],
+      "notes": "Named mining-royalty issuer (Net Smelter Royalty tokenization) — replaces bare category mining-royalty-tokenization"
+    },
+    {
+      "slug": "agrifi",
+      "display_name": "AgriFi",
+      "seeds": [
+        "https://agrifi.tech/",
+        "https://blog.agrifi.tech/how-agrifi-turns-farmland-into-real-world-asset-class-agriculture-blockchainsolution",
+        "https://agrifi.tech/whitepaper"
+      ],
+      "notes": "Named farmland / ag RWA tokenization project (Polygon / AGF) — replaces bare category tokenized-farmland"
+    },
+    {
+      "slug": "agro-digital-token",
+      "display_name": "Agro Digital Token",
+      "seeds": [
+        "https://www.myagro.io/",
+        "https://www.myagro.io/#tokenomics",
+        "https://www.myagro.io/#rwa"
+      ],
+      "notes": "Named plantation / farmland RWA token (AGRO) — second named farmland candidate after AgriFi"
+    }
+  ]
+}
