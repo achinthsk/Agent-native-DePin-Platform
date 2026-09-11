@@ -92,23 +92,49 @@ jobs:
             exit 1
           fi
 
+          # Pull what this cycle actually found out of the status log it
+          # just wrote, so the PR title/body can name it instead of using
+          # a generic template. Falls back to "unknown" fields if the log
+          # entry is missing something (e.g. on a failed run).
+          DISPLAY_NAME="unknown"
+          CLASSIFICATION="unknown"
+          FINDINGS_PATH=""
+          REACHABLE="?"
+          CHECKED="?"
+          if [ -s scheduler/status/status_log.jsonl ]; then
+            LAST_LINE=$(tail -n 1 scheduler/status/status_log.jsonl)
+            DISPLAY_NAME=$(echo "$LAST_LINE" | jq -r '.details.display_name // .details.candidate // "unknown"')
+            CLASSIFICATION=$(echo "$LAST_LINE" | jq -r '.details.classification // "unknown"')
+            FINDINGS_PATH=$(echo "$LAST_LINE" | jq -r '.details.findings_path // ""')
+            REACHABLE=$(echo "$LAST_LINE" | jq -r '.details.reachable_count // "?"')
+            CHECKED=$(echo "$LAST_LINE" | jq -r '(.details.evidence // []) | length')
+          fi
+
+          RESULTS_BLOCK="**Candidate: ${DISPLAY_NAME}**
+          **Classification: \`${CLASSIFICATION}\`**
+          Sources checked: ${REACHABLE}/${CHECKED} reachable
+          Full findings: \`${FINDINGS_PATH}\`"
+
           if [ "${{ steps.discovery.outcome }}" = "success" ]; then
             if [ -n "${CANDIDATE_NAME:-}" ]; then
-              TITLE="scheduler: on-demand discovery — ${CANDIDATE_NAME} ($(date -u +%Y-%m-%d))"
+              TITLE="scheduler: on-demand discovery — ${DISPLAY_NAME} (${CLASSIFICATION}) — $(date -u +%Y-%m-%d)"
               BODY="On-demand discovery via \`workflow_dispatch\` input \`candidate_name=${CANDIDATE_NAME}\`.
 
           Status: **success**
 
+          ${RESULTS_BLOCK}
+
           - Named override — backlog pointer **not** advanced.
-          - Same investigation rigor as a scheduled run.
           - Elmnts was not touched.
           - \`execution/\` was not invoked.
           - **Do not auto-merge** — human review required."
             else
-              TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d)"
+              TITLE="scheduler: discovery cycle $(date -u +%Y-%m-%d) — ${DISPLAY_NAME} (${CLASSIFICATION})"
               BODY="Backlog-order discovery (scheduled or manual with empty input).
 
           Status: **success**
+
+          ${RESULTS_BLOCK}
 
           - One candidate; backlog pointer advanced on success.
           - Elmnts was not touched.
