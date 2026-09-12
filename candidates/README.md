@@ -65,6 +65,7 @@ by the API.
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| AgriFi | `candidate-for-adapter` | 2026-09-12 | [`agrifi/FINDINGS.md`](./agrifi/FINDINGS.md) |
 | PTX | `candidate-for-adapter` | 2026-09-11 | [`ptx/FINDINGS.md`](./ptx/FINDINGS.md) |
 | Mining royalty tokenization (category) | `insufficient-information` | 2026-08-21 | [`mining-royalty-tokenization/FINDINGS.md`](./mining-royalty-tokenization/FINDINGS.md) |
 | Tokenized farmland (category) | `insufficient-information` | 2026-08-21 | [`tokenized-farmland/FINDINGS.md`](./tokenized-farmland/FINDINGS.md) |
