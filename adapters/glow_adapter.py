@@ -254,7 +254,7 @@ def build_instance(
     # We still record it as the protocol's stated contractual vesting, with the source
     # called out here rather than silently omitting the well-documented parameter.
     instance: dict[str, Any] = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.2.0",
         "asset_id": f"glow-farm-{farm_id}",
         "source_platform": "glow",
         "asset_class": "solar-depin",
@@ -328,6 +328,37 @@ def build_instance(
                 "cents as reported by the GCA server (not independently audited by this adapter)."
             ),
         },
+        # Yield-related emissions discrepancy from scoring/GLW_PRICE_EMISSIONS_FINDINGS.md.
+        # Root verification_tier is unchanged; claims are additive provenance only.
+        "claims": [
+            {
+                "claim": "weekly_infrastructure_emissions_glw_documented",
+                "value": 175000,
+                "verification_tier": "self-reported-unverified",
+                "fact_domain": "self-reported",
+                "evidence_source": (
+                    "Glow docs / whitepaper / 2025 tokenomics fixed weekly "
+                    "infrastructure emissions schedule: 175,000 GLW → MinerPool "
+                    "(see scoring/GLW_PRICE_EMISSIONS_FINDINGS.md § Part 1)."
+                ),
+                "verified_at": "2026-08-18T00:00:00Z",
+                "conflicts_with": "weekly_infrastructure_emissions_glw_onchain_median",
+            },
+            {
+                "claim": "weekly_infrastructure_emissions_glw_onchain_median",
+                "value": 187002,
+                "verification_tier": "cryptographic-onchain-proof",
+                "fact_domain": "on-chain",
+                "evidence_source": (
+                    "Direct eth_getLogs of GLW Transfer(from=0x0) aggregated "
+                    "weekly to MinerPoolAndGCA over 94 mint-active weeks; "
+                    "MinerPool weekly median ≈ 187,002 GLW "
+                    "(scoring/GLW_PRICE_EMISSIONS_FINDINGS.md § Part 1)."
+                ),
+                "verified_at": "2026-08-18T00:00:00Z",
+                "conflicts_with": "weekly_infrastructure_emissions_glw_documented",
+            },
+        ],
     }
     return instance
 

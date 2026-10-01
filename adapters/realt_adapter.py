@@ -381,7 +381,7 @@ def build_instance(
     )
 
     instance: dict[str, Any] = {
-        "schema_version": "1.1.0",
+        "schema_version": "1.2.0",
         "asset_id": asset_id,
         "source_platform": "realt",
         "asset_class": "real-estate-rental",
@@ -442,6 +442,24 @@ def build_instance(
                 "public community API list payload used for this pull."
             ),
         },
+        # Yield claim only — additive; root verification_tier unchanged.
+        "claims": [
+            {
+                "claim": "yield_profile.realized_yield_pct",
+                "value": stats["realized_yield_pct"],
+                "verification_tier": "self-reported-unverified",
+                "fact_domain": "self-reported",
+                "evidence_source": (
+                    "RealT publicly available weekly master rent files as exposed "
+                    "by the public RealToken rent tracker "
+                    f"({DEFAULT_RENT_TRACKER}/token); arithmetic mean of weekly "
+                    "annualized-yield observations. See "
+                    "yield_profile.yield_calculation_basis on this snapshot."
+                ),
+                "verified_at": pulled_at,
+                "conflicts_with": None,
+            }
+        ],
     }
     return instance
 

@@ -250,7 +250,7 @@ def build_instance(answers: dict[str, Any], pulled_at: str) -> dict[str, Any]:
         yield_computed_at = None if not answers.get("force_yield_timestamp") else pulled_at
 
     instance: dict[str, Any] = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.2.0",
         "asset_id": answers["asset_id"],
         "source_platform": "elmnts",
         "asset_class": "oil-gas-royalty",
@@ -354,6 +354,36 @@ def build_instance(answers: dict[str, Any], pulled_at: str) -> dict[str, Any]:
         else:
             yp["yield_calculation_basis"] = None
             yp["yield_last_computed_at"] = None
+
+    # Yield claim only — additive; root verification_tier unchanged.
+    # Prefer realized when present; otherwise record advertised (incl. explicit null).
+    if yp["realized_yield_pct"] is not None:
+        claim_id = "yield_profile.realized_yield_pct"
+        claim_value = yp["realized_yield_pct"]
+        evidence = (
+            "Manual-entry realized_yield_pct from human-supplied / public materials "
+            "(adapters/FINDINGS.md). See yield_profile.yield_calculation_basis."
+        )
+    else:
+        claim_id = "yield_profile.advertised_yield_pct"
+        claim_value = yp["advertised_yield_pct"]
+        evidence = (
+            "Manual-entry advertised_yield_pct from human-supplied / public marketing "
+            "materials (adapters/FINDINGS.md). Null means no stable numeric advertised "
+            "figure was available — not an invented marketing range. See "
+            "yield_profile.yield_calculation_basis."
+        )
+    instance["claims"] = [
+        {
+            "claim": claim_id,
+            "value": claim_value,
+            "verification_tier": "self-reported-unverified",
+            "fact_domain": "self-reported",
+            "evidence_source": evidence,
+            "verified_at": pulled_at,
+            "conflicts_with": None,
+        }
+    ]
 
     return instance
 
