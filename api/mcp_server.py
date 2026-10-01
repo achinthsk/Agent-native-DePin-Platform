@@ -91,8 +91,9 @@ def get_scored_asset(
     """
     Return full scored detail for one asset_id.
 
-    Includes all four score objects in full and snapshot_age_days from the
-    engine. Descriptive only — not investment advice.
+    Includes all four score objects in full, snapshot_age_days from the
+    engine, and optional schema claims[] when present on the snapshot.
+    Descriptive only — not investment advice.
     """
     return queries.get_scored_asset(
         asset_id,

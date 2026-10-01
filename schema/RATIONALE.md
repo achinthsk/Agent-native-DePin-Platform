@@ -1,9 +1,24 @@
-# Rationale: Normalized Asset Schema (v1.1.0)
+# Rationale: Normalized Asset Schema (v1.2.0)
 
 This document explains *why* each field in `asset-v1.schema.json` exists,
 and specifically what mistake or blind spot it is designed to prevent when
 an AI agent (not a human) is using this data to compare fractional-ownership
 positions across structurally different platforms.
+
+## v1.2.0 changes
+
+- **`claims`** (optional array): per-fact provenance for individual checkable
+  assertions (claim id, value, `verification_tier`, `fact_domain`,
+  `evidence_source`, `verified_at`, `conflicts_with`). Added so an agent can
+  see when two sources disagree on the *same* yield-related fact — e.g. Glow's
+  documented 175k GLW/week infrastructure emissions vs the on-chain MinerPool
+  weekly median ≈187k — without overwriting or diluting the asset-root
+  `verification.verification_tier` that scoring already reads.
+- **Why additive / optional:** root `verification` and `yield_profile` stay
+  required and unchanged in meaning. Scoring continues to ignore `claims`.
+  Prior `1.0.x` / `1.1.0` instances without `claims` remain valid against this
+  major-version-1 shape. Instances that populate `claims` should declare
+  `schema_version: "1.2.0"`.
 
 ## v1.1.0 changes
 
@@ -128,6 +143,17 @@ Making this a required, closed-enum field means self-reported data can
 never be silently displayed with the same apparent authority as verified
 data — an agent reading this field always knows which kind of claim it's
 looking at.
+
+## Claims (per-fact provenance)
+
+Asset-root `verification` answers "how trustworthy is this asset's data in
+general?" Some facts need a finer grain: the same asset can have one yield-
+related number from marketing docs and another from an on-chain measurement,
+with different tiers and a documented conflict. Optional `claims[]` records
+those per-fact rows without changing root `verification_tier` /
+`verification_notes` or any scoring input. `conflicts_with` is how two
+disagreeing claim ids point at each other; when there is no conflict it is
+explicitly `null`.
 
 ## Maturity / track record
 

@@ -86,7 +86,7 @@ def _enrich(
     conf = scored.get("data_confidence_score") or {}
     age = (conf.get("inputs") or {}).get("snapshot_age_days")
 
-    return {
+    out: dict[str, Any] = {
         "asset_id": scored.get("asset_id"),
         "name": snap.get("name"),
         "asset_class": snap.get("asset_class"),
@@ -113,6 +113,10 @@ def _enrich(
         "weights_version": scored.get("weights_version"),
         "scored_at": scored.get("scored_at"),
     }
+    # Optional schema field — surface only when the snapshot populated it.
+    if "claims" in snap:
+        out["claims"] = snap.get("claims")
+    return out
 
 
 def _score_value(asset: dict[str, Any], field: str) -> float | None:
