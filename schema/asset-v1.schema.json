@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/schemas/asset-v1.schema.json",
   "title": "Normalized Fractional-Ownership Asset Schema",
-  "x-schema-semver": "1.1.0",
-  "$comment": "Schema semantic version 1.1.0. This file represents major version 1 of the schema; instances declare their schema_version and must match this file's major version. This schema stores only observed/reported facts about an asset. It intentionally contains no risk score, yield score, or composite rating field — scoring is computed downstream by a separate service that reads validated instances of this schema. v1.1.0 adds asset_class value real-estate-rental for tokenized rental real estate (e.g. RealT).",
+  "x-schema-semver": "1.2.0",
+  "$comment": "Schema semantic version 1.2.0. This file represents major version 1 of the schema; instances declare their schema_version and must match this file's major version. This schema stores only observed/reported facts about an asset. It intentionally contains no risk score, yield score, or composite rating field — scoring is computed downstream by a separate service that reads validated instances of this schema. v1.1.0 adds asset_class value real-estate-rental for tokenized rental real estate (e.g. RealT). v1.2.0 adds optional top-level claims[] for per-fact verification provenance (additive; root verification_tier unchanged).",
   "description": "A source-agnostic representation of a single fractional-ownership / revenue-share position in a physical-infrastructure asset (tokenized solar, oil & gas royalties, regulated funds/credit, etc.), designed so an AI agent can compare positions pulled from structurally different source platforms without silently conflating incompatible concepts (e.g. a token-emission reward vs. a direct cash revenue share, or a marketed yield vs. a realized one).",
   "type": "object",
   "properties": {
@@ -57,7 +57,12 @@
     "maturity": { "$ref": "#/$defs/maturity" },
     "liquidity": { "$ref": "#/$defs/liquidity" },
     "regulatory": { "$ref": "#/$defs/regulatory" },
-    "exposure": { "$ref": "#/$defs/exposure" }
+    "exposure": { "$ref": "#/$defs/exposure" },
+    "claims": {
+      "type": "array",
+      "description": "Optional list of individual factual claims about this asset, each carrying its own verification_tier and evidence provenance. Additive to (and independent of) the root verification object, which remains the asset-level default used by scoring. Use this when two sources disagree on the same fact, or when a single field's evidence quality differs from the asset-wide tier. Omit entirely when no per-claim provenance is recorded.",
+      "items": { "$ref": "#/$defs/claim" }
+    }
   },
   "required": [
     "schema_version",
@@ -327,6 +332,55 @@
       "type": "string",
       "pattern": "^[A-Z]{2}$",
       "description": "ISO 3166-1 alpha-2 two-letter country code."
+    },
+
+    "claim": {
+      "type": "object",
+      "description": "One checkable factual claim about the asset, with its own verification provenance. Does not replace yield_profile, verification, or any other root section — those remain the canonical fields for scoring and identity.",
+      "properties": {
+        "claim": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable identifier for what is being claimed (e.g. a dotted schema path like yield_profile.realized_yield_pct, or a named quantity such as weekly_infrastructure_emissions_glw). Used as the target of conflicts_with on other claim entries."
+        },
+        "value": {
+          "description": "The claimed value as observed or reported. Type is intentionally unconstrained so a claim can carry a number, string, boolean, null, or structured object without forcing a separate schema branch per fact."
+        },
+        "verification_tier": {
+          "type": "string",
+          "enum": ["independent-third-party-audit", "cryptographic-onchain-proof", "remote-sensing-verified", "self-reported-unverified"],
+          "description": "Same closed enum as verification.verification_tier. Applies to THIS claim only — not a substitute for the asset-root verification_tier that scoring reads."
+        },
+        "fact_domain": {
+          "type": "string",
+          "enum": ["on-chain", "physical-world", "self-reported"],
+          "description": "Where the fact lives: directly observable on a public ledger (on-chain), about physical infrastructure/output (physical-world), or asserted by the issuer/marketing materials without independent measurement (self-reported)."
+        },
+        "evidence_source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where this claim's value was taken from (URL, on-chain contract + method, findings doc path, etc.). Required so the claim is auditable without trusting the instance alone."
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when this claim was checked or recorded against its evidence_source."
+        },
+        "conflicts_with": {
+          "type": ["string", "null"],
+          "description": "When this claim disagrees with another entry in the same claims array, the other entry's claim identifier; otherwise null. Both sides of a documented discrepancy should point at each other."
+        }
+      },
+      "required": [
+        "claim",
+        "value",
+        "verification_tier",
+        "fact_domain",
+        "evidence_source",
+        "verified_at",
+        "conflicts_with"
+      ],
+      "additionalProperties": false
     }
   }
 }
