@@ -20,16 +20,14 @@ Backlog notes: Named farmland / ag RWA tokenization project (Polygon / AGF) — 
 | --- | --- |
 | Display name | AgriFi |
 | Slug | `agrifi` |
-| Issuer / brand (self-described) | Agrifi / AgriFi (official site author meta + docs) |
-| Primary site | https://agrifi.tech/ |
-| Docs | https://agrifi.gitbook.io/agrifi-docs |
-| App shell | https://agrifi.app/ (HTTP 200; minimal HTML shell in this probe) |
+| Issuer / brand (self-described) | AgriFi |
+| Seed hosts | `agrifi.gitbook.io`, `agrifi.tech`, `blog.agrifi.tech`, `techbullion.com`, `www.rwa.io` |
 
 ### Token / chain (live probe)
 
 | Field | Observed |
 | --- | --- |
-| Chain | Polygon (via DexScreener pairs + `eth_call` on Polygon RPC) |
+| Chain | polygon |
 | Token contract | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` |
 | `name()` | `AGRIFI` |
 | `symbol()` | `AGF` |
@@ -44,7 +42,7 @@ Backlog notes: Named farmland / ag RWA tokenization project (Polygon / AGF) — 
 | polygon / quickswap | `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` | AGF / USDT0 | $2344.94 | $0.008467 |
 | polygon / quickswap | `0xC5540C03C42cEe4D2cA967B662f0E9FD84b01209` | AGF / WPOL | $1698.75 | $0.008490 |
 
-CoinGecko search API returned **zero** coins for query `agrifi` in this pass — no independent CoinGecko listing confirmed.
+CoinGecko search API returned **zero** coins for query `AgriFi` in this pass — no independent CoinGecko listing confirmed.
 
 ---
 
@@ -52,41 +50,27 @@ CoinGecko search API returned **zero** coins for query `agrifi` in this pass —
 
 **What official sources claim**
 
-- AgriFi presents as a Polygon-based agricultural finance / RWA platform
-  combining farmland tokenization, DeFi staking, supply-chain traceability,
-  IoT monitoring, and (documented as a concept) parametric crop insurance
-  (site, blog, GitBook, LLM knowledge page).
-- Farmland / crop-production rights are described as tokenized so holders get
-  **fractional ownership** and participate in agricultural revenue
-  (GitBook Concept 2 RWA; token docs; blog 2025-10-17 and 2026-04-17 posts).
-- Architecture docs describe off-chain collection of farm revenue (crop sales /
-  leases), conversion to stablecoins, and on-chain distribution via a
-  “Profit Distribution Contract” proportional to holdings — **addresses for
-  those modules were not found in reachable docs**.
+- Fractional ownership of underlying real-world assets (docs/marketing)
+- Claimed yield/APY language: `5–18% APY`
+- Staking lock language: `30–360 days (stated in docs)`
 
 **What was actually confirmed here**
 
-- Marketing site, blog articles, GitBook markdown, whitepaper PDF, and LLM
-  knowledge HTML are reachable.
-- A Polygon ERC-20 with `name=AGRIFI` / `symbol=AGF` / `decimals=18` /
-  `totalSupply=7.2e9` token units responds at the DexScreener-attributed
-  address (see §1) via public RPC.
-- **No** public registry of specific farmland parcels, harvest ledgers, or
-  profit-distribution events was found in this pass.
-- **No** independent CoinGecko listing matched `agrifi` via the public search
-  API in this pass.
+- Token eth_call identity confirmed on **polygon** at `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` (AGRIFI/AGF).
+- DexScreener reports 2 pair(s) for the probed token (market context only).
+- 16/21 research URLs reachable in this pass.
+- **No** independently queryable underlying-asset registry/ownership contract was confirmed.
+- **No** independently queryable staking/profit/royalty distribution contract was confirmed.
 
 ---
 
 ## 3. Claimed payout mechanism & claimed yield
 
-| Claim | Source (reachable) | Confirmed on-chain / API? |
+| Claim theme | Observed language | Independently queryable now? |
 | --- | --- | --- |
-| AGF enables fractional farmland ownership + profit sharing | GitBook token page; Concept 2 RWA; blog | **Not confirmed** — no ownership/profit contract addresses published in fetched docs |
-| Staking APY `5% to 18% APY` | GitBook architecture + blog | **Not confirmed** — staking contract address not found |
-| Lock-ups `lock-up periods (30–360 days)` | GitBook architecture | **Not confirmed** on-chain |
-| Team/partner vesting schedules | GitBook lock-up page | Allocation schedule **conflicts** with “fully circulating” language on token page |
-| ERC-20 on Polygon, 7.2B supply | GitBook + LLM page; matches `totalSupply()` if address in §1 is accepted | Token supply **matches** RPC read for the probed contract |
+| Advertised yield / APY | 5–18% APY | **no** |
+| Ownership / royalty / RWA claim | Fractional ownership of underlying real-world assets (docs/marketing) | **no** |
+| Token supply | total supply 7.2 billion , fully circulating. | yes |
 
 ---
 
@@ -94,14 +78,13 @@ CoinGecko search API returned **zero** coins for query `agrifi` in this pass —
 
 | Contract / surface | Address | Evidence | Adapter relevance |
 | --- | --- | --- | --- |
-| AGF ERC-20 (probed) | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` | DexScreener pair baseToken + Polygon `eth_call` | Identity / supply / holdings only |
-| Ownership mapping | **Not published** in fetched docs | Architecture describes module | Required for farm-level claims — **blocked** |
-| Staking | **Not published** | Architecture describes 30–360d / 5–18% APY | Required for staking-yield claims — **blocked** |
-| Profit distribution | **Not published** | Architecture describes stablecoin distributions | Required for realized farm yield — **blocked** |
-| Governance | **Not published** | Architecture describes DAO voting | Optional |
+| Primary token (probed) | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` | eth_call + market metadata | Identity / supply only |
+| Ownership / asset registry | **Not confirmed** | Docs may describe; address not verified | Required for underlying claims — blocked unless published |
+| Staking / rewards | **Not confirmed** | Docs may describe; address not verified | Required for APY observation — blocked unless published |
+| Profit / royalty distribution | **Not confirmed** | Docs may describe; address not verified | Required for realized yield — blocked unless published |
 
-**Events:** No verified event signatures / merklized harvest reports / public
-subgraph endpoint for AgriFi farm economics were found in this research pass.
+**Events:** No verified payout/harvest event ABI + public indexer endpoint for
+this candidate’s underlying economics was confirmed in this research pass.
 
 ---
 
@@ -112,43 +95,44 @@ subgraph endpoint for AgriFi farm economics were found in this research pass.
 | `https://agrifi.tech/` | HTTP 200 — live (text/html) |
 | `https://blog.agrifi.tech/how-agrifi-turns-farmland-into-real-world-asset-class-agriculture-blockchainsolution` | HTTP 200 — live (text/html) |
 | `https://agrifi.tech/whitepaper` | HTTP 404: Not Found |
+| `https://docs.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'docs.agrifi.tech'. (_ssl.c:1000) |
+| `https://app.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'app.agrifi.tech'. (_ssl.c:1000) |
+| `https://blog.agrifi.tech/` | HTTP 200 — live (text/html) |
+| `https://agrifi.tech/whitepaper.pdf` | HTTP 404: Not Found |
+| `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html` | HTTP 200 — live (text/html) |
 | `https://agrifi.gitbook.io/agrifi-docs/llms.txt` | HTTP 200 — live (text/markdown) |
 | `https://agrifi.gitbook.io/agrifi-docs/` | HTTP 200 — live (text/html) |
-| `https://docs.agrifi.com/` | URL error: [Errno -2] Name or service not known |
-| `https://docs.agrifi.org/` | URL error: [Errno -2] Name or service not known |
-| `https://agrifi.app/` | HTTP 200 — live (text/html) |
-| `https://app.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'app.agrifi.tech'. (_ssl.c:1000) |
-| `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html` | HTTP 200 — live (text/html) |
-| `https://agrifi.tech/agrifi-whitepaper.pdf` | HTTP 200 — live (application/pdf) |
-| `https://agrifi.tech/whitepaper.pdf` | HTTP 404: Not Found |
-| `https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-token.md` | HTTP 200 — live (text/markdown) |
-| `https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-project-system-architecture.md` | HTTP 200 — live (text/markdown) |
-| `https://agrifi.gitbook.io/agrifi-docs/undefined/lock-up-period.md` | HTTP 200 — live (text/markdown) |
-| `https://agrifi.gitbook.io/agrifi-docs/agrifi-concepts-for-both-b2b-and-b2c-space/concept-2-rwa-organic-farming-produce-from-the-farm-will-be-their-return-on-the-investment.md` | HTTP 200 — live (text/markdown) |
-| `https://blog.agrifi.tech/agriculture-agf-token-polygon-farmland-tokenization-defi-staking-food-safety-blockchain-web3` | HTTP 200 — live (text/html) |
 | `https://agrifi.gitbook.io/agrifi-docs.md` | HTTP 200 — live (text/markdown) |
-| `https://agrifi.gitbook.io/agrifi-docs/future-potential-of-farmland-tokenization.md` | HTTP 200 — live (text/markdown) |
+| `https://agrifi.gitbook.io/agrifi-docs` | HTTP 200 — live (text/html) |
+| `https://techbullion.com/agrifi-highlights-traceability-tokenization-and-real-time-data-as-agricultures-next-layer/` | HTTP 200 — live (text/html) |
+| `https://techbullion.com/the-agf-token-ecosystem-expands-agricultures-role-in-the-web3-real-world-asset-economy/` | HTTP 200 — live (text/html) |
+| `https://www.digitaljournal.com/pr/news/binary-news-network/agrifi-s-digital-twin-tokens-reinventing-1446980078.html` | HTTP 410: Gone |
+| `https://techbullion.com/agrifi-brings-farmland-on-chain-with-its-iot-and-blockchain-powered-marketplace/` | HTTP 200 — live (text/html) |
+| `https://techbullion.com/agrifi-expands-farmer-profitability-through-blockchain-based-staking-and-revenue-sharing/` | HTTP 200 — live (text/html) |
+| `https://techbullion.com/how-agf-token-brings-real-world-utility-to-defi/` | HTTP 200 — live (text/html) |
+| `https://www.rwa.io/post/how-defi-is-embracing-real-world-assets?utm_source=chatgpt.com` | HTTP 200 — live (text/html) |
+| `https://agrifi.tech/agrifi-whitepaper.pdf?utm_source=chatgpt.com` | HTTP 200 — live (application/pdf) |
+| `https://blog.agrifi.tech/web3-token-traceable-tokenized-data-driven-agriculture-passiveincome-agriculture` | HTTP 200 — live (text/html) |
 
 | Indexer / market API | Result |
 | --- | --- |
-| DexScreener token/pair API | Reachable — used for pair liquidity / price context |
-| CoinGecko search `agrifi` | Reachable API; **0** coin hits |
-| Polygon public RPC `eth_call` | Reachable for ERC-20 getters on probed address |
+| DexScreener search/token API | Reachable — used for market context when pairs match |
+| CoinGecko search | CoinGecko search API returned **zero** coins for query `AgriFi` in this pass — no independent CoinGecko listing confirmed. |
+| Public EVM RPC eth_call | Reachable for probed token |
 
 ---
 
 ## 6. Official vs independent sources & conflicts
 
-**Official (self-reported):** agrifi.tech, blog.agrifi.tech, GitBook docs,
-whitepaper PDF, LLM knowledge page, agrifi.app shell.
+**Official (self-reported):** `agrifi.gitbook.io`, `agrifi.tech`, `blog.agrifi.tech`, `techbullion.com`, `www.rwa.io`
 
-**Independent / market:** DexScreener pairs for the AGF/Polygon token;
-CoinGecko search API returned **zero** coins for query `agrifi` in this pass — no independent CoinGecko listing confirmed.
+**Independent / market:** DexScreener (if pairs match); CoinGecko as noted.
+Independent market metadata is **not** independent underlying-asset verification.
 
 **Conflicts / tensions**
 
-- Official token docs describe the **7.2B supply as fully circulating** (no further mint / no reserved release), while the lock-up page describes **team/partner vesting cliffs**. These cannot both be complete descriptions of the same allocation schedule without clarification.
-- Docs claim staking APYs / profit distribution contracts, but this research pass only confirmed the **ERC-20 token contract** on-chain. Ownership / staking / profit-distribution contract addresses were **not** published in the reachable docs indexed here.
+- Docs describe supply as fully circulating while also describing team/partner vesting — allocation schedule conflict.
+- Yield/APY is claimed in official materials, but no staking or distribution contract address was confirmed as independently queryable.
 
 ---
 
@@ -156,41 +140,229 @@ CoinGecko search API returned **zero** coins for query `agrifi` in this pass —
 
 | Claim | Confidence now | Why |
 | --- | --- | --- |
-| Project exists as a public web brand with docs/blog | **High** | Multiple official HTTP 200 surfaces with consistent Agrifi branding |
-| Capital-style (non-operator) marketing path | **Medium-high** | Docs emphasize token purchase / fractional ownership / staking without hardware-operator requirements — aligns with discovery `candidate-for-adapter`, still first-pass |
-| AGF ERC-20 on Polygon with 7.2B supply | **Medium** (address) / **High** (RPC fields if address accepted) | Address comes from DexScreener metadata matching name/symbol, **not** from an issuer-published contract list in GitBook; RPC fields match marketed supply |
-| Specific farmland assets are on-chain & identifiable | **Low** | No parcel registry, legal wrappers, or ownership-contract addresses found |
-| Staking APY 5–18% is observable | **Low** | Claimed in docs/blog; staking contract not located; no reward events read |
-| Realized agricultural profit distributions to holders | **Low** | Described architecturally; no distribution contract / payout history found |
-| Independent market listing quality | **Low** | Thin DEX liquidity observed; no CoinGecko hit in this pass |
+| Public project web presence | High | Reachable official HTTP surfaces |
+| Capital-style (non-operator) marketing path | Medium-high | Discovery already classified `candidate-for-adapter` — first-pass only |
+| Token identity on-chain | High | Successful eth_call getters |
+| Underlying asset independently verifiable | Low | Ownership/registry contract reachability |
+| Economic mechanism / realized yield observable | Low | Distribution/staking contract reachability |
+| Independent market listing quality | Medium | Dex/CG presence without implying backing |
 
 ---
 
 ## 8. Recommended data sources for an eventual adapter
 
-- **On-chain ERC-20 reads** against `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` on Polygon (`name`/`symbol`/`decimals`/`totalSupply`/`balanceOf`) via public RPC — confirmed reachable this pass.
-- **Official GitBook markdown** (`*.md` / `llms.txt`) for claimed payout/staking mechanics — reachable, but treat as self-reported.
-- **Official blog + LLM knowledge page** for product claims (fractional farmland, profit sharing) — self-reported.
-- **DexScreener public API** for pair liquidity / price context only — not proof of farmland backing or yield.
-- **Do not** treat whitepaper PDF marketing, undocumented staking APYs, or unnamed ownership/profit contracts as adapter inputs until addresses and events are published and independently readable.
+See **Recommended Adapter Inputs** below for the concrete table. High-level:
 
-**Honest adapter boundary (if ever greenlit):** an MVP could snapshot ERC-20
-identity + supply + optional DEX context, and must leave
-`realized_yield_pct` / farm-level verification **null** until ownership and
-profit-distribution contracts (or an equivalent public attestation API) are
-reachable — same SourceError / no-fabrication discipline as Glow/RealT/Elmnts.
+- ERC-20 identity (name/symbol/decimals)
+- totalSupply via eth_call
+- DEX market context (price/liquidity) as non-backing context
+- claims[] rows for documented self-reported yield/ownership claims with explicit tiers
+
+**Honest adapter boundary:** implement only independently queryable surfaces;
+leave unrealized underlying/yield fields **null** rather than inventing values.
 
 ---
 
-## 9. Human decision gate
+## 9. Adapter Readiness
+
+**Status: `token-data-only`**
+
+Allowed values: `adapter-ready` | `token-data-only` | `blocked`.
+
+### Readiness rationale
+
+Token-level (and possibly market) facts can be independently queried, but the underlying real-world / economic mechanism claims lack published, queryable contracts or independent attestations. Tokn must not equate token verification with infrastructure verification.
+
+**What can currently be verified:** Token total supply equals eth_call totalSupply(), Token identity (name/symbol/decimals), Public DEX market price/liquidity exists for the token
+
+**What cannot currently be verified:** Verified underlying-asset ownership / registry identity, Observed staking APY as a verified fact, Realized underlying revenue/yield distributions
+
+**Main blocker(s):** No issuer-published ownership/registry contract address for the underlying asset; No publicly reachable staking/profit/royalty distribution contract or payout API
+
+**To move to the next state:** To become adapter-ready: issuer-published ownership/registry and/or payout-distribution contracts (or an equivalent public attestation API) that connect the token to specific underlying assets and cashflows.
+
+---
+
+## 10. Claim-to-Verification Map
+
+| Claim | Claimed value | Source | Source type | Fact domain | Verification method | Current status | Adapter output | Blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Token total supply equals eth_call totalSupply() | total supply 7.2 billion , fully circulating. | polygon `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` via `https://polygon-bor-rpc.publicnode.com` | blockchain | on-chain | polygon eth_call → totalSupply() @ 0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6 | verified | total_supply / claims[] | — |
+| Token identity (name/symbol/decimals) | AGRIFI / AGF / 18 | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` on polygon | blockchain | on-chain | eth_call → name()/symbol()/decimals() | verified | token identity fields / claims[] | — |
+| Contract address is issuer-published | 0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6 | DexScreener metadata match and/or docs (see research) | DEX/indexer | on-chain | Compare issuer docs address list to probed address; if docs omit address, provenance is only market metadata | partially-verified | claims[] (provenance note) | Issuer docs may not publish the address; treat DexScreener attribution as supporting until docs confirm |
+| Public DEX market price/liquidity exists for the token | price=$0.008467; liquidity_usd=2344.94 | DexScreener pair `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` (polygon/quickswap) | DEX/indexer | on-chain | GET DexScreener /latest/dex/tokens/{address} | observable | token_price (context only) / claims[] | — |
+| DEX liquidity proves underlying-asset liquidity / backing | implied by marketing sometimes | DexScreener | DEX/indexer | self-reported | No valid verification — category error | blocked | null / unavailable | Market liquidity ≠ physical/underlying liquidity |
+| Staking / advertised yield APY | 5–18% APY | Official docs/blog (reachable text) | official documentation | self-reported | No verification method currently available | self-reported | claims[] (self-reported) ; realized_yield_pct=null | Staking/reward contract address not identified |
+| Fractional ownership of underlying real-world assets (docs/marketing) | As stated in official marketing/docs | Official website/docs | official website | physical-world | No verification method currently available | self-reported | claims[] ; underlying fields null until contracts exist | No public ownership/registry/distribution surface confirmed |
+
+Status vocabulary: `verified` | `partially-verified` | `observable` |
+`self-reported` | `conflicted` | `unverified` | `blocked`.
+
+---
+
+## 11. Verification Boundary
+
+### Token-level verification
+
+| Capability | Available now? |
+| --- | --- |
+| Contract identity / symbol / decimals | YES |
+| Total supply | YES |
+| Holder balances / transfers (generic ERC-20) | YES (standard) |
+| DEX price | YES |
+| DEX liquidity | YES |
+
+### Underlying-asset verification
+
+| Capability | Available now? |
+| --- | --- |
+| Physical / real-world asset identity | NO |
+| Asset ownership / registry | NO |
+| Infrastructure operation / production | NO |
+| Revenue generation / leases / harvests | NO |
+| Actual distributions to holders | NO |
+
+### Bridge summary
+
+```text
+Token exists (independently queryable): YES
+Underlying asset identified in docs: YES
+Underlying asset independently verifiable: NO
+Economic connection between token and asset verifiable: NO
+```
+
+**Reminder:** Independent market/indexer sources ≠ independent underlying-asset
+verification.
+
+---
+
+## 12. Recommended Adapter Inputs
+
+| Input | Source | Exact endpoint/contract | Method/query | Expected data | Frequency | Verification role |
+| --- | --- | --- | --- | --- | --- | --- |
+| ERC-20 getters | blockchain | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` on polygon | eth_call name/symbol/decimals/totalSupply via `https://polygon-bor-rpc.publicnode.com` | identity + supply | on snapshot / daily | **required** — token identity |
+| DEX market context | DEX/indexer | `https://api.dexscreener.com/latest/dex/tokens/0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` | GET JSON pairs | price/liquidity context | optional cadence | **optional** — never as backing proof |
+| Official page text | official documentation | `https://agrifi.tech/` | HTTP GET + text extract | claim language / product description | on research refresh | **optional** — self-reported claims provenance |
+| Official page text | official documentation | `https://blog.agrifi.tech/how-agrifi-turns-farmland-into-real-world-asset-class-agriculture-blockchainsolution` | HTTP GET + text extract | claim language / product description | on research refresh | **optional** — self-reported claims provenance |
+| Official page text | official documentation | `https://blog.agrifi.tech/` | HTTP GET + text extract | claim language / product description | on research refresh | **optional** — self-reported claims provenance |
+| Official page text | official documentation | `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html` | HTTP GET + text extract | claim language / product description | on research refresh | **optional** — self-reported claims provenance |
+| Official page text | official documentation | `https://agrifi.gitbook.io/agrifi-docs/llms.txt` | HTTP GET + text extract | claim language / product description | on research refresh | **required** for claims[] sourcing (self-reported) |
+| Official page text | official documentation | `https://agrifi.gitbook.io/agrifi-docs/` | HTTP GET + text extract | claim language / product description | on research refresh | **required** for claims[] sourcing (self-reported) |
+
+---
+
+## 13. Sources Not Suitable for Verification
+
+| Source / pattern | Why unsuitable |
+| --- | --- |
+| Marketing slogans without contracts/APIs | Self-reported; not independently queryable |
+| Unnamed ownership/staking/profit contracts | Described in docs but address missing |
+| DEX liquidity as proof of underlying-asset liquidity/backing | Category error |
+| Project's own unverified API (if any) as independent verification | Same trust domain as issuer |
+| Unextracted PDF bytes as confirmation of a specific numeric claim | PDF may be reachable without text verification |
+| Unrelated DEX tickers sharing a short symbol | Symbol collision risk |
+
+---
+
+## 14. Adapter Implementation Boundary
+
+### What the future adapter SHOULD implement
+
+- ERC-20 identity (name/symbol/decimals)
+- totalSupply via eth_call
+- DEX market context (price/liquidity) as non-backing context
+- claims[] rows for documented self-reported yield/ownership claims with explicit tiers
+
+### What the future adapter MUST NOT implement
+
+- Verified underlying-asset ownership / registry identity
+- Observed staking APY as a verified fact
+- Realized underlying revenue/yield distributions
+
+### What requires human review
+
+- Whether the project token (if any) should be treated as the representation
+  of specific underlying assets vs a generic ecosystem/utility token.
+- Whether DexScreener-attributed contract addresses are acceptable before
+  issuer-published address lists exist.
+- Whether to greenlight any adapter at `token-data-only` readiness.
+
+---
+
+## 15. Promotion Checklist
+
+- [x] Token/asset identity independently confirmed
+- [x] Relevant contracts confirmed
+- [x] Required APIs reachable
+- [x] Required blockchain calls reproducible
+- [x] Claim sources documented
+- [x] Independent evidence identified where available
+- [x] Conflicts documented
+- [x] Verification boundary defined
+- [x] Claims mapped to evidence
+- [x] Unknown values explicitly preserved
+- [x] Adapter outputs defined
+- [ ] Schema compatibility checked
+- [ ] Scoring impact understood
+- [ ] Snapshot reproducibility confirmed
+- [ ] Human review completed
+
+`[x]` = demonstrated in this research pass. `[ ]` = not demonstrated (human /
+adapter phase).
+
+---
+
+## 16. Human decision gate
 
 This file does **not** authorize adapter work. Next steps for a human:
 
 1. Review [`FINDINGS.md`](./FINDINGS.md) + this `ADAPTER_SPEC.md`.
 2. Decide whether to greenlight a bespoke adapter (manual, like Glow/RealT/Elmnts).
-3. If greenlit: require issuer-published contract addresses for ownership /
-   staking / distributions before treating yield claims as verifiable.
-4. If not greenlit: leave classification as research-only; no code.
+3. If greenlit: implement **only** the SHOULD list; keep MUST NOT as null/unavailable.
+4. If not greenlit: leave as research-only; no code.
+
+---
+
+## 17. Machine-readable summary (research only)
+
+Not consumed by scoring/schema. For humans and future tooling only.
+
+```yaml
+adapter_readiness:
+  status: token-data-only
+  researched_at: "2026-10-03T17:19Z"
+
+  token_verification:
+    available: true
+
+  underlying_asset_verification:
+    available: false
+
+  economic_mechanism_verification:
+    available: false
+
+  market_data:
+    available: true
+
+  independent_sources:
+    available: true
+    note: "Independent market/indexer data ≠ independent underlying-asset verification"
+
+  critical_blockers:
+    - "No issuer-published ownership/registry contract address for the underlying asset"
+    - "No publicly reachable staking/profit/royalty distribution contract or payout API"
+
+  recommended_adapter_scope:
+    - "ERC-20 identity (name/symbol/decimals)"
+    - "totalSupply via eth_call"
+    - "DEX market context (price/liquidity) as non-backing context"
+    - "claims[] rows for documented self-reported yield/ownership claims with explicit tiers"
+
+  prohibited_outputs:
+    - "Verified underlying-asset ownership / registry identity"
+    - "Observed staking APY as a verified fact"
+    - "Realized underlying revenue/yield distributions"
+```
 
 ---
 
@@ -204,6 +376,14 @@ This file does **not** authorize adapter work. Next steps for a human:
 
 > AgriFi bridges agriculture and DeFi with blockchain-based farmland tokenization, fractional ownership, and real-world yield sharing on the Polygon network. Discover how the AGF token is powering a new era of Real-World Assets (RWAs). AgriFi bridges agriculture and DeFi with blockchain-based farmland tokenization, fractional ownership, and real-world yield sharing on the Polygon network. Discover how the AGF token is powering a new era of Real-World Assets (RWAs). How AgriFi Is Turning Farmland into the Next Big Real-World Asset Class - Agrifi Contact Home Blockchain News Supplychain AI Home Bl
 
+### `https://blog.agrifi.tech/`
+
+> The blockchain technology allows peer-to-peer transactions to take place transparently and without the need for an intermediary like a bank (such as for cryptocurrencies) or a middleman in the agriculture sector. By eliminating the need for a central authority, the technology changes the way that trust is granted – instead of trusting an authority, trust is placed in cryptography and peer-to-peer architecture. It thus helps restore the trust between producers and consumers, which can reduce the The blockchain technology allows peer-to-peer transactions to take place transparently and without t
+
+### `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html`
+
+> Agrifi is a Web3 agriculture platform combining blockchain, DeFi, IoT farming and real-world asset tokenisation to build a transparent agricultural finance ecosystem. Agrifi LLM Knowledge Base / Web3 Agriculture Ecosystem Agrifi Web3 Agriculture Knowledge Base This page provides a structured overview of the Agrifi ecosystem for researchers, AI systems, and users seeking technical information about the Agrifi platform. Platform Overview Agrifi is a Web3 agricultural technology platform that integrates blockchain infrastructure, decentralized finance (DeFi), IoT farming devices, and artificial i
+
 ### `https://agrifi.gitbook.io/agrifi-docs/llms.txt`
 
 > # Agrifi Docs ## Agrifi Docs - [Introduction](https://agrifi.gitbook.io/agrifi-docs/introduction.md) - [Agrifi Concepts for both B2B and B2C Space](https://agrifi.gitbook.io/agrifi-docs/agrifi-concepts-for-both-b2b-and-b2c-space.md) - [Food Safety and Supply Chain Management in Blockchain & Marketplace](https://agrifi.gitbook.io/agrifi-docs/agrifi-concepts-for-both-b2b-and-b2c-space/food-safety-and-supply-chain-management-in-blockchain-and-marketplace.md) - [Concept 2: RWA - Organic Farming - Produce from the Farm will be their Return on the Investment](https://agrifi.gitbook.io/agrifi-docs/ag
@@ -212,19 +392,11 @@ This file does **not** authorize adapter work. Next steps for a human:
 
 > Introduction / Agrifi Docs Agrifi Docs ⌘ Ctrl k Agrifi Docs Introduction Agrifi Concepts for both B2B and B2C Space Future Potential of Farmland Tokenization Agrifi AGF BLOCKCHAIN IN AGRICUTURE ROLE OF BLOCKCHAIN TECHNOLOGY AGTECH HELPS SMALL AND LARGE FARMS TO FINANCING TRENDS AGRIBUSINESS GIANTS ARE TAKING NOTICE DUPONT’S GRANULAR SENSORS ARE NOW COMMON THROUGHOUT FARMING ADVANCED AERIAL IMAGING IS NOW POSSIBLE ANALYTICS TOOLS ROBOTICS IS AUTOMATING AGRICULTURE BENEFITS TRANSPARENT SUPPLY CHAIN FAIR PRICING OF GOODS EXPAND FINANCIAL OPTIONS FOR FARMERS IMMEDIATE PAYMENT ON DELIVERY TRACEABIL
 
-### `https://agrifi.app/`
+### `https://agrifi.gitbook.io/agrifi-docs.md`
 
-> Web site created using create-react-app Agrifi
+> # Page Not Found The URL `agrifi-docs` does not exist. This page may have been moved, renamed, or deleted. ## Suggested Pages You may be looking for one of the following: - [ANALYTICS TOOLS](https://agrifi.gitbook.io/agrifi-docs/agrifi-agf/analytics-tools.md) - [Agrifi TOKEN](https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-token.md) - [FINANCING TRENDS](https://agrifi.gitbook.io/agrifi-docs/agrifi-agf/financing-trends.md) - [DUPONT’S GRANULAR](https://agrifi.gitbook.io/agrifi-docs/agrifi-agf/duponts-granular.md) - [BLOCKCHAIN IN AGRICUTURE](https://agrifi.gitbook.io/agrifi-docs/agrifi-
 
-### `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html`
+### `https://agrifi.gitbook.io/agrifi-docs`
 
-> Agrifi is a Web3 agriculture platform combining blockchain, DeFi, IoT farming and real-world asset tokenisation to build a transparent agricultural finance ecosystem. Agrifi LLM Knowledge Base / Web3 Agriculture Ecosystem Agrifi Web3 Agriculture Knowledge Base This page provides a structured overview of the Agrifi ecosystem for researchers, AI systems, and users seeking technical information about the Agrifi platform. Platform Overview Agrifi is a Web3 agricultural technology platform that integrates blockchain infrastructure, decentralized finance (DeFi), IoT farming devices, and artificial i
-
-### `https://agrifi.tech/agrifi-whitepaper.pdf`
-
-> [PDF reachable — 200000 bytes fetched in this probe; text not fully extracted by the research agent]
-
-### `https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-token.md`
-
-> > For the complete documentation index, see [llms.txt](https://agrifi.gitbook.io/agrifi-docs/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-token.md). # Agrifi TOKEN AgriFi’s AGF token is designed to integrate blockchain technology with agricultural investment, creating a decentralized finance (DeFi) platform that lowers barriers to farmland ownership and incentivizes participation through various token utilities. Below is a detailed elaboration on th
+> Introduction / Agrifi Docs Agrifi Docs ⌘ Ctrl k Agrifi Docs Introduction Agrifi Concepts for both B2B and B2C Space Future Potential of Farmland Tokenization Agrifi AGF BLOCKCHAIN IN AGRICUTURE ROLE OF BLOCKCHAIN TECHNOLOGY AGTECH HELPS SMALL AND LARGE FARMS TO FINANCING TRENDS AGRIBUSINESS GIANTS ARE TAKING NOTICE DUPONT’S GRANULAR SENSORS ARE NOW COMMON THROUGHOUT FARMING ADVANCED AERIAL IMAGING IS NOW POSSIBLE ANALYTICS TOOLS ROBOTICS IS AUTOMATING AGRICULTURE BENEFITS TRANSPARENT SUPPLY CHAIN FAIR PRICING OF GOODS EXPAND FINANCIAL OPTIONS FOR FARMERS IMMEDIATE PAYMENT ON DELIVERY TRACEABIL
 

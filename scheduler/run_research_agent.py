@@ -4,19 +4,18 @@ Adapter-spec research agent — deeper pass for `candidate-for-adapter` only.
 
 Extends discovery; does not replace it. After a candidate is classified
 `candidate-for-adapter` (FINDINGS.md already written), this job produces
-`candidates/<slug>/ADAPTER_SPEC.md`: an adapter-ready research document
+`candidates/<slug>/ADAPTER_SPEC.md`: an adapter-readiness specification
 for human review. It writes **zero** adapter code, schema, scoring, or
 storage changes.
 
+The spec answers: can Tokn build a meaningful verification adapter, what
+exactly can it verify, what can it not, and what evidence should an
+eventual adapter pull?
+
 Usage:
-  # Research one candidate that already has FINDINGS.md
   python3 scheduler/run_research_agent.py --candidate-name AgriFi
-
-  # Called automatically by run_discovery.py when classification is
-  # candidate-for-adapter (unless --skip-research).
-
+  python3 scheduler/run_research_agent.py --candidate-name PTX --no-status-log
   python3 scheduler/run_research_agent.py --candidate-name AgriFi --dry-run
-  python3 scheduler/run_research_agent.py --candidate-name AgriFi --no-status-log
 """
 
 from __future__ import annotations
@@ -25,11 +24,12 @@ import argparse
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +37,6 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scheduler._guards import assert_scheduler_safe
 from scheduler.run_discovery import (
-    BACKLOG_PATH,
     CANDIDATES_DIR,
     load_backlog,
     match_backlog_candidate,
@@ -53,18 +52,24 @@ CLASSIFICATION_RE = re.compile(
 )
 ADDR_RE = re.compile(r"0x[a-fA-F0-9]{40}")
 
-# Extra surfaces commonly useful for capital/RWA candidates beyond seeds.
-EXTRA_URL_TEMPLATES = (
-    "https://{compact}.gitbook.io/{compact}-docs/llms.txt",
-    "https://{compact}.gitbook.io/{compact}-docs/",
-    "https://docs.{compact}.com/",
-    "https://docs.{compact}.org/",
-    "https://{compact}.app/",
-    "https://app.{compact}.tech/",
-    "https://{compact}.tech/llm/{compact}-llm-knowledge-base.html",
-    "https://{compact}.tech/agrifi-whitepaper.pdf",
-    "https://{compact}.tech/whitepaper.pdf",
+READINESS_STATES = ("adapter-ready", "token-data-only", "blocked")
+CLAIM_STATUSES = (
+    "verified",
+    "partially-verified",
+    "observable",
+    "self-reported",
+    "conflicted",
+    "unverified",
+    "blocked",
 )
+
+CHAIN_RPC = {
+    "polygon": "https://polygon-bor-rpc.publicnode.com",
+    "ethereum": "https://ethereum-rpc.publicnode.com",
+    "arbitrum": "https://arbitrum-one-rpc.publicnode.com",
+    "bsc": "https://bsc-rpc.publicnode.com",
+    "base": "https://base-rpc.publicnode.com",
+}
 
 
 class _TextExtractor(HTMLParser):
@@ -72,10 +77,15 @@ class _TextExtractor(HTMLParser):
         super().__init__()
         self._chunks: list[str] = []
         self._skip = False
+        self.hrefs: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in ("script", "style", "noscript"):
             self._skip = True
+        if tag == "a":
+            for k, v in attrs:
+                if k == "href" and v:
+                    self.hrefs.append(v)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in ("script", "style", "noscript"):
@@ -91,7 +101,7 @@ class _TextExtractor(HTMLParser):
         return " ".join(self._chunks)
 
 
-def html_to_text(raw: str) -> str:
+def html_to_text_and_links(raw: str, base_url: str) -> tuple[str, list[str]]:
     meta_bits: list[str] = []
     for pat in (
         r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']',
@@ -106,11 +116,17 @@ def html_to_text(raw: str) -> str:
     try:
         parser.feed(raw)
         body = parser.text()
+        hrefs = parser.hrefs
     except Exception:
         body = re.sub(r"<[^>]+>", " ", raw)
-    if meta_bits:
-        return " ".join(meta_bits) + " " + body
-    return body
+        hrefs = re.findall(r'href=["\']([^"\']+)["\']', raw, flags=re.I)
+    text = (" ".join(meta_bits) + " " + body).strip() if meta_bits else body
+    abs_links: list[str] = []
+    for h in hrefs:
+        if h.startswith("#") or h.startswith("mailto:") or h.startswith("javascript:"):
+            continue
+        abs_links.append(urljoin(base_url, h))
+    return text, abs_links
 
 
 def fetch_url(url: str, max_bytes: int = 200_000) -> dict[str, Any]:
@@ -127,19 +143,22 @@ def fetch_url(url: str, max_bytes: int = 200_000) -> dict[str, Any]:
                     "http_status": code,
                     "content_type": ct or "application/pdf",
                     "excerpt": (
-                        f"[PDF reachable — {len(raw_bytes)} bytes fetched in this "
-                        "probe; text not fully extracted by the research agent]"
+                        f"[PDF reachable — {len(raw_bytes)} bytes fetched; "
+                        "binary not fully text-extracted by this agent]"
                     ),
                     "raw_text": "",
+                    "links": [],
                     "error": None,
                     "kind": "pdf",
                 }
             raw = raw_bytes.decode("utf-8", errors="replace")
-            # Prefer GitBook markdown when HTML shell is thin.
-            if url.rstrip("/").endswith(".md") or "text/markdown" in ct:
+            links: list[str] = []
+            if url.rstrip("/").endswith(".md") or "text/markdown" in ct or url.endswith(
+                ".txt"
+            ):
                 text = raw
             elif "html" in ct or raw.lstrip().startswith("<"):
-                text = html_to_text(raw)
+                text, links = html_to_text_and_links(raw, url)
             else:
                 text = raw
             text = re.sub(r"\s+", " ", text).strip()
@@ -149,43 +168,31 @@ def fetch_url(url: str, max_bytes: int = 200_000) -> dict[str, Any]:
                 "http_status": code,
                 "content_type": ct,
                 "excerpt": text[:2000],
-                "raw_text": text[:20000],
+                "raw_text": text[:25000],
+                "links": links,
                 "error": None,
                 "kind": "text",
             }
     except HTTPError as e:
-        return {
-            "url": url,
-            "ok": False,
-            "http_status": e.code,
-            "content_type": None,
-            "excerpt": "",
-            "raw_text": "",
-            "error": f"HTTP {e.code}: {e.reason}",
-            "kind": "error",
-        }
+        return _err(url, f"HTTP {e.code}: {e.reason}", e.code)
     except URLError as e:
-        return {
-            "url": url,
-            "ok": False,
-            "http_status": None,
-            "content_type": None,
-            "excerpt": "",
-            "raw_text": "",
-            "error": f"URL error: {e.reason}",
-            "kind": "error",
-        }
+        return _err(url, f"URL error: {e.reason}")
     except Exception as e:
-        return {
-            "url": url,
-            "ok": False,
-            "http_status": None,
-            "content_type": None,
-            "excerpt": "",
-            "raw_text": "",
-            "error": f"{type(e).__name__}: {e}",
-            "kind": "error",
-        }
+        return _err(url, f"{type(e).__name__}: {e}")
+
+
+def _err(url: str, error: str, code: int | None = None) -> dict[str, Any]:
+    return {
+        "url": url,
+        "ok": False,
+        "http_status": code,
+        "content_type": None,
+        "excerpt": "",
+        "raw_text": "",
+        "links": [],
+        "error": error,
+        "kind": "error",
+    }
 
 
 def read_findings_classification(slug: str) -> tuple[Path, str | None]:
@@ -207,32 +214,43 @@ def resolve_candidate(name: str) -> dict[str, Any]:
 
 
 def expand_research_urls(candidate: dict[str, Any]) -> list[str]:
+    """Seed URLs + generic doc/app guesses from the candidate hostnames."""
     seeds = list(candidate.get("seeds") or [])
-    slug = candidate["slug"]
-    compact = slug.replace("-", "")
     extras: list[str] = []
-    for tmpl in EXTRA_URL_TEMPLATES:
-        extras.append(tmpl.format(compact=compact, slug=slug))
-    # AgriFi / gitbook-style known deep pages when seeds mention agrifi.
-    if "agrifi" in slug or "agrifi" in (candidate.get("display_name") or "").lower():
-        extras.extend(
-            [
-                "https://agrifi.gitbook.io/agrifi-docs/llms.txt",
-                "https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-token.md",
-                "https://agrifi.gitbook.io/agrifi-docs/technology/agrifi-project-system-architecture.md",
-                "https://agrifi.gitbook.io/agrifi-docs/undefined/lock-up-period.md",
-                "https://agrifi.gitbook.io/agrifi-docs/agrifi-concepts-for-both-b2b-and-b2c-space/concept-2-rwa-organic-farming-produce-from-the-farm-will-be-their-return-on-the-investment.md",
-                "https://agrifi.tech/llm/agrifi-llm-knowledge-base.html",
-                "https://agrifi.tech/agrifi-whitepaper.pdf",
-                "https://agrifi.app/",
-                "https://blog.agrifi.tech/agriculture-agf-token-polygon-farmland-tokenization-defi-staking-food-safety-blockchain-web3",
-                "https://blog.agrifi.tech/how-agrifi-turns-farmland-into-real-world-asset-class-agriculture-blockchainsolution",
-            ]
-        )
-    # Follow .md mirrors of any gitbook HTML seeds.
+    hosts: set[str] = set()
+    for u in seeds:
+        try:
+            host = urlparse(u).netloc.lower()
+            if host:
+                hosts.add(host)
+                # strip leading www.
+                if host.startswith("www."):
+                    hosts.add(host[4:])
+        except Exception:
+            continue
+    for host in sorted(hosts):
+        root = host.split(".")
+        if len(root) >= 2:
+            base = ".".join(root[-2:])  # e.g. agrifi.tech, ptxtoken.com
+            extras.extend(
+                [
+                    f"https://{base}/",
+                    f"https://docs.{base}/",
+                    f"https://app.{base}/",
+                    f"https://blog.{base}/",
+                    f"https://{base}/whitepaper",
+                    f"https://{base}/whitepaper.pdf",
+                    f"https://{base}/llm/{slugify(candidate['display_name'])}-llm-knowledge-base.html",
+                ]
+            )
+            # Common gitbook pattern from product name
+            compact = slugify(candidate["display_name"]).replace("-", "")
+            extras.append(f"https://{compact}.gitbook.io/{compact}-docs/llms.txt")
+            extras.append(f"https://{compact}.gitbook.io/{compact}-docs/")
+    # Follow .md mirrors of gitbook HTML seeds.
     mirrored: list[str] = []
     for u in seeds + extras:
-        if "gitbook.io" in u and not u.endswith(".md") and not u.endswith(".txt"):
+        if "gitbook.io" in u and not u.endswith((".md", ".txt")):
             mirrored.append(u.rstrip("/") + ".md")
     seen: set[str] = set()
     out: list[str] = []
@@ -241,6 +259,42 @@ def expand_research_urls(candidate: dict[str, Any]) -> list[str]:
             seen.add(u)
             out.append(u)
     return out
+
+
+def interesting_follow_links(links: list[str], limit: int = 10) -> list[str]:
+    keys = (
+        "gitbook",
+        "docs",
+        "whitepaper",
+        "token",
+        "tokenomics",
+        "architecture",
+        "llm",
+        "api",
+        "contract",
+        "staking",
+        "nsr",
+        "royalty",
+        "rwa",
+        "farmland",
+        "llms.txt",
+    )
+    picked: list[str] = []
+    seen: set[str] = set()
+    for link in links:
+        low = link.lower()
+        if any(k in low for k in keys) and link not in seen:
+            # Prefer markdown for gitbook
+            if "gitbook.io" in low and not low.endswith((".md", ".txt")):
+                md = link.rstrip("/") + ".md"
+                if md not in seen:
+                    picked.append(md)
+                    seen.add(md)
+            picked.append(link)
+            seen.add(link)
+        if len(picked) >= limit:
+            break
+    return picked
 
 
 def rpc_eth_call(rpc: str, to: str, data: str) -> str | None:
@@ -281,14 +335,19 @@ def decode_abi_string(hexdata: str | None) -> str | None:
         return None
 
 
-def probe_erc20(address: str, rpc: str) -> dict[str, Any]:
+def probe_erc20(address: str, rpc: str, chain: str) -> dict[str, Any]:
     selectors = {
         "name": "0x06fdde03",
         "symbol": "0x95d89b41",
         "decimals": "0x313ce567",
         "totalSupply": "0x18160ddd",
     }
-    out: dict[str, Any] = {"address": address, "rpc": rpc, "ok": False}
+    out: dict[str, Any] = {
+        "address": address,
+        "rpc": rpc,
+        "chain": chain,
+        "ok": False,
+    }
     name_h = rpc_eth_call(rpc, address, selectors["name"])
     sym_h = rpc_eth_call(rpc, address, selectors["symbol"])
     dec_h = rpc_eth_call(rpc, address, selectors["decimals"])
@@ -312,27 +371,56 @@ def probe_erc20(address: str, rpc: str) -> dict[str, Any]:
     return out
 
 
-def dexscreener_token_search(query: str) -> list[dict[str, Any]]:
+def candidate_search_terms(candidate: dict[str, Any]) -> list[str]:
+    name = candidate.get("display_name") or ""
+    slug = candidate.get("slug") or ""
+    terms = [name, slug, slug.replace("-", " "), slug.replace("-", "").upper()]
+    # ticker-ish guesses from notes
+    notes = candidate.get("notes") or ""
+    for m in re.findall(r"\b([A-Z]{2,6})\b", notes):
+        terms.append(m)
+    # de-dupe preserve order
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in terms:
+        t = t.strip()
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t)
+    return out
+
+
+def dexscreener_token_search(
+    query: str, prefer_name_bits: list[str] | None = None
+) -> list[dict[str, Any]]:
     url = f"https://api.dexscreener.com/latest/dex/search?q={query}"
     try:
         req = Request(url, headers={"User-Agent": UA})
         with urlopen(req, timeout=TIMEOUT) as resp:
             data = json.loads(resp.read())
         pairs = data.get("pairs") or []
-        # Prefer exact symbol matches when query looks like a ticker.
+        bits = [b.lower() for b in (prefer_name_bits or []) if b]
         q = query.strip().upper()
         scored: list[tuple[int, dict[str, Any]]] = []
         for p in pairs:
             base = p.get("baseToken") or {}
             sym = (base.get("symbol") or "").upper()
-            name = (base.get("name") or "").upper()
+            name = (base.get("name") or "")
+            name_u = name.upper()
+            name_l = name.lower()
             score = 0
             if sym == q:
-                score += 5
-            if q in name:
+                score += 4
+            if q and q in name_u.replace(" ", ""):
                 score += 3
-            if "agri" in name.lower() or "agri" in sym.lower():
-                score += 2
+            for b in bits:
+                if b and b in name_l:
+                    score += 3
+                if b and b in sym.lower():
+                    score += 2
+            # Penalize huge aggregate "symbols" (noise from some chains)
+            if len(sym) > 12 or "," in sym:
+                score -= 10
             scored.append((score, p))
         scored.sort(key=lambda x: -x[0])
         return [p for s, p in scored if s > 0][:8]
@@ -363,6 +451,448 @@ def collect_addresses(texts: list[str]) -> list[str]:
     return found
 
 
+def coingecko_search(query: str) -> dict[str, Any]:
+    try:
+        req = Request(
+            f"https://api.coingecko.com/api/v3/search?query={query}",
+            headers={"User-Agent": UA},
+        )
+        with urlopen(req, timeout=TIMEOUT) as resp:
+            return json.loads(resp.read())
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}", "coins": []}
+
+
+def extract_claim_snippets(blob: str) -> dict[str, str | None]:
+    out: dict[str, str | None] = {
+        "yield": None,
+        "staking_lock": None,
+        "supply": None,
+        "royalty": None,
+        "ownership": None,
+    }
+    for pat in (
+        r"(\d+\s*%\s*to\s*\d+\s*%\s*APY)",
+        r"(\d+\s*[–-]\s*\d+\s*%\s*APY)",
+        r"(APY[s]?\s*\([^)]*\d+\s*[–-]\s*\d+%[^)]*\))",
+    ):
+        m = re.search(pat, blob, flags=re.I)
+        if m:
+            out["yield"] = m.group(1)
+            break
+    m = re.search(r"(lock-up periods?\s*\([^)]+\))", blob, flags=re.I)
+    if m:
+        out["staking_lock"] = m.group(1)
+    elif re.search(r"30\s*[–-]\s*360\s*days", blob, flags=re.I):
+        out["staking_lock"] = "30–360 days (stated in docs)"
+    m = re.search(
+        r"((?:total|fully circulating)\s+supply[^.]*\d[\d.,]*\s*(?:billion|B|million)?[^.]*\.?)",
+        blob,
+        flags=re.I,
+    )
+    if m:
+        out["supply"] = m.group(1)[:160]
+    if re.search(r"net smelter royalty|NSR", blob, flags=re.I):
+        out["royalty"] = "Net Smelter Royalty / NSR share claims (marketing)"
+    if re.search(r"fractional (farmland )?ownership|tokenized farmland", blob, flags=re.I):
+        out["ownership"] = "Fractional ownership of underlying real-world assets (docs/marketing)"
+    return out
+
+
+def md_escape(s: str) -> str:
+    return s.replace("|", "/").replace("\n", " ").strip()
+
+
+def build_assessment(
+    *,
+    candidate: dict[str, Any],
+    evidence: list[dict[str, Any]],
+    token_probe: dict[str, Any] | None,
+    dex_pairs: list[dict[str, Any]],
+    coingecko: dict[str, Any] | None,
+    claim_bits: dict[str, str | None],
+    blob: str,
+) -> dict[str, Any]:
+    token_ok = bool(token_probe and token_probe.get("ok"))
+    market_ok = bool(dex_pairs)
+    cg_coins = (coingecko or {}).get("coins") or []
+    independent_market = market_ok or bool(cg_coins)
+    unconfirmed_ticker = bool(
+        token_probe and token_probe.get("unconfirmed_ticker_collision_risk")
+    )
+
+    # Heuristic: underlying/economic contracts published?
+    has_ownership_addr = bool(
+        re.search(r"ownership contract.{0,80}0x[a-fA-F0-9]{40}", blob, flags=re.I)
+    )
+    has_staking_addr = bool(
+        re.search(r"staking contract.{0,80}0x[a-fA-F0-9]{40}", blob, flags=re.I)
+    )
+    has_dist_addr = bool(
+        re.search(
+            r"(profit distribution|distribution|payout|royalty).{0,80}0x[a-fA-F0-9]{40}",
+            blob,
+            flags=re.I,
+        )
+    )
+    docs_claim_underlying = bool(
+        claim_bits.get("ownership")
+        or claim_bits.get("royalty")
+        or re.search(r"farmland|mining|royalty|NSR|real[- ]world", blob, flags=re.I)
+    )
+    underlying_verifiable = has_ownership_addr  # strict: need address
+    economic_verifiable = has_staking_addr or has_dist_addr
+
+    # Conflicts
+    conflicts: list[str] = []
+    if re.search(r"fully circulating", blob, flags=re.I) and re.search(
+        r"vesting", blob, flags=re.I
+    ):
+        conflicts.append(
+            "Docs describe supply as fully circulating while also describing "
+            "team/partner vesting — allocation schedule conflict."
+        )
+    if claim_bits.get("yield") and not economic_verifiable:
+        conflicts.append(
+            "Yield/APY is claimed in official materials, but no staking or "
+            "distribution contract address was confirmed as independently queryable."
+        )
+
+    # Readiness
+    if token_ok and (underlying_verifiable or economic_verifiable):
+        status = "adapter-ready"
+    elif token_ok or market_ok:
+        # Token or market surface exists, but underlying/economic not verifiable
+        status = "token-data-only" if token_ok else "blocked"
+        # If only thin market noise without matching token probe, treat blocked
+        if not token_ok and market_ok:
+            status = "blocked"
+    else:
+        status = "blocked"
+    # Refine: marketing-only SPA with no token → blocked
+    if not token_ok and not underlying_verifiable and not economic_verifiable:
+        status = "blocked"
+
+    blockers: list[str] = []
+    if not token_ok:
+        if unconfirmed_ticker:
+            blockers.append(
+                "Short-ticker DexScreener hit exists but issuer-published contract "
+                "address / strong name corroboration is missing — token identity "
+                "not confirmed (collision risk)"
+            )
+        else:
+            blockers.append("No independently confirmed token contract via eth_call")
+    if docs_claim_underlying and not underlying_verifiable:
+        blockers.append(
+            "No issuer-published ownership/registry contract address for the underlying asset"
+        )
+    if (claim_bits.get("yield") or claim_bits.get("royalty")) and not economic_verifiable:
+        blockers.append(
+            "No publicly reachable staking/profit/royalty distribution contract or payout API"
+        )
+    if not independent_market and not token_ok:
+        blockers.append("No independent market/indexer surface confirming asset identity")
+
+    # Claim rows
+    claims: list[dict[str, str]] = []
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+    if token_ok and token_probe:
+        supply = token_probe.get("totalSupply_tokens")
+        supply_s = (
+            f"{supply:,.0f} token units"
+            if isinstance(supply, (int, float))
+            else "decoded via eth_call"
+        )
+        claims.append(
+            {
+                "claim": "Token total supply equals eth_call totalSupply()",
+                "claimed_value": claim_bits.get("supply")
+                or f"{token_probe.get('symbol')} supply (docs or market)",
+                "source": f"{token_probe['chain']} `{token_probe['address']}` via `{token_probe['rpc']}`",
+                "source_type": "blockchain",
+                "fact_domain": "on-chain",
+                "verification_method": (
+                    f"{token_probe['chain']} eth_call → totalSupply() "
+                    f"@ {token_probe['address']}"
+                ),
+                "current_status": "verified",
+                "adapter_output": "total_supply / claims[]",
+                "blocker": "—",
+            }
+        )
+        claims.append(
+            {
+                "claim": "Token identity (name/symbol/decimals)",
+                "claimed_value": (
+                    f"{token_probe.get('name')} / {token_probe.get('symbol')} / "
+                    f"{token_probe.get('decimals')}"
+                ),
+                "source": f"`{token_probe['address']}` on {token_probe['chain']}",
+                "source_type": "blockchain",
+                "fact_domain": "on-chain",
+                "verification_method": "eth_call → name()/symbol()/decimals()",
+                "current_status": "verified",
+                "adapter_output": "token identity fields / claims[]",
+                "blocker": "—",
+            }
+        )
+        # Address provenance caveat
+        claims.append(
+            {
+                "claim": "Contract address is issuer-published",
+                "claimed_value": token_probe["address"],
+                "source": "DexScreener metadata match and/or docs (see research)",
+                "source_type": "DEX/indexer",
+                "fact_domain": "on-chain",
+                "verification_method": (
+                    "Compare issuer docs address list to probed address; "
+                    "if docs omit address, provenance is only market metadata"
+                ),
+                "current_status": "partially-verified",
+                "adapter_output": "claims[] (provenance note)",
+                "blocker": (
+                    "Issuer docs may not publish the address; treat DexScreener "
+                    "attribution as supporting until docs confirm"
+                ),
+            }
+        )
+
+    if market_ok:
+        p0 = dex_pairs[0]
+        liq = (p0.get("liquidity") or {}).get("usd")
+        claims.append(
+            {
+                "claim": "Public DEX market price/liquidity exists for the token",
+                "claimed_value": f"price=${p0.get('priceUsd')}; liquidity_usd={liq}",
+                "source": f"DexScreener pair `{p0.get('pairAddress')}` ({p0.get('chainId')}/{p0.get('dexId')})",
+                "source_type": "DEX/indexer",
+                "fact_domain": "on-chain",
+                "verification_method": "GET DexScreener /latest/dex/tokens/{address}",
+                "current_status": "observable",
+                "adapter_output": "token_price (context only) / claims[]",
+                "blocker": "—",
+            }
+        )
+        claims.append(
+            {
+                "claim": "DEX liquidity proves underlying-asset liquidity / backing",
+                "claimed_value": "implied by marketing sometimes",
+                "source": "DexScreener",
+                "source_type": "DEX/indexer",
+                "fact_domain": "self-reported",
+                "verification_method": "No valid verification — category error",
+                "current_status": "blocked",
+                "adapter_output": "null / unavailable",
+                "blocker": "Market liquidity ≠ physical/underlying liquidity",
+            }
+        )
+
+    if claim_bits.get("yield"):
+        claims.append(
+            {
+                "claim": "Staking / advertised yield APY",
+                "claimed_value": claim_bits["yield"],
+                "source": "Official docs/blog (reachable text)",
+                "source_type": "official documentation",
+                "fact_domain": "self-reported",
+                "verification_method": (
+                    "Query staking/reward contract events and compute observed APY"
+                    if economic_verifiable
+                    else "No verification method currently available"
+                ),
+                "current_status": "self-reported" if not economic_verifiable else "unverified",
+                "adapter_output": (
+                    "claims[] (self-reported) ; realized_yield_pct=null"
+                    if not economic_verifiable
+                    else "realized_yield_pct / claims[]"
+                ),
+                "blocker": (
+                    "Staking/reward contract address not identified"
+                    if not economic_verifiable
+                    else "—"
+                ),
+            }
+        )
+
+    if claim_bits.get("ownership") or claim_bits.get("royalty"):
+        claims.append(
+            {
+                "claim": claim_bits.get("ownership")
+                or claim_bits.get("royalty")
+                or "Underlying economic claim",
+                "claimed_value": "As stated in official marketing/docs",
+                "source": "Official website/docs",
+                "source_type": "official website",
+                "fact_domain": "physical-world",
+                "verification_method": (
+                    "Query ownership/registry + distribution contracts or independent attestations"
+                    if underlying_verifiable or economic_verifiable
+                    else "No verification method currently available"
+                ),
+                "current_status": "self-reported",
+                "adapter_output": "claims[] ; underlying fields null until contracts exist",
+                "blocker": (
+                    "No public ownership/registry/distribution surface confirmed"
+                    if not (underlying_verifiable or economic_verifiable)
+                    else "—"
+                ),
+            }
+        )
+
+    if not claims:
+        claims.append(
+            {
+                "claim": "Public capital-product identity / investability surface",
+                "claimed_value": "Marketing site describes investable product",
+                "source": "; ".join(e["url"] for e in evidence if e.get("ok"))[:300]
+                or "seeds",
+                "source_type": "official website",
+                "fact_domain": "self-reported",
+                "verification_method": "No independent contract/API verification method found",
+                "current_status": "blocked",
+                "adapter_output": "null / unavailable",
+                "blocker": "No confirmed token, registry, or payout API",
+            }
+        )
+
+    if unconfirmed_ticker and token_probe:
+        claims.insert(
+            0,
+            {
+                "claim": "Token contract identity matching this project",
+                "claimed_value": (
+                    f"{token_probe.get('name')}/{token_probe.get('symbol')} @ "
+                    f"{token_probe.get('address')} on {token_probe.get('chain')}"
+                ),
+                "source": "DexScreener short-ticker search (uncorroborated)",
+                "source_type": "DEX/indexer",
+                "fact_domain": "on-chain",
+                "verification_method": (
+                    "Require issuer-published address + eth_call name/symbol match "
+                    "before treating as project token"
+                ),
+                "current_status": "blocked",
+                "adapter_output": "null / unavailable",
+                "blocker": token_probe.get("error")
+                or "Ticker collision risk — not confirmed as this project's token",
+            }
+        )
+
+    # Readiness rationale
+    verified_bits = [c["claim"] for c in claims if c["current_status"] == "verified"]
+    blocked_bits = [
+        c["claim"]
+        for c in claims
+        if c["current_status"] in ("blocked", "self-reported", "unverified")
+    ]
+    if status == "adapter-ready":
+        reason = (
+            f"Independently queryable token/economic surfaces exist "
+            f"({', '.join(verified_bits) or 'see matrix'}). Underlying or "
+            f"payout mechanism verification is also reachable."
+        )
+        next_step = (
+            "Human greenlight can proceed to a scoped adapter implementing "
+            "only the verified surfaces plus self-reported claims[] provenance."
+        )
+    elif status == "token-data-only":
+        reason = (
+            "Token-level (and possibly market) facts can be independently "
+            "queried, but the underlying real-world / economic mechanism "
+            "claims lack published, queryable contracts or independent "
+            "attestations. Tokn must not equate token verification with "
+            "infrastructure verification."
+        )
+        next_step = (
+            "To become adapter-ready: issuer-published ownership/registry "
+            "and/or payout-distribution contracts (or an equivalent public "
+            "attestation API) that connect the token to specific underlying "
+            "assets and cashflows."
+        )
+    else:
+        reason = (
+            "Even a minimum useful verification surface could not be "
+            "established: no confirmed token eth_call identity matched to "
+            "the project and no independently queryable underlying/payout "
+            "source. Marketing pages alone are insufficient."
+        )
+        next_step = (
+            "Publish contract addresses / public APIs for token identity and "
+            "economic mechanism, then re-run the research agent."
+        )
+
+    recommended_scope: list[str] = []
+    prohibited: list[str] = []
+    if token_ok:
+        recommended_scope.extend(
+            ["ERC-20 identity (name/symbol/decimals)", "totalSupply via eth_call"]
+        )
+    if market_ok:
+        recommended_scope.append("DEX market context (price/liquidity) as non-backing context")
+    recommended_scope.append(
+        "claims[] rows for documented self-reported yield/ownership claims with explicit tiers"
+    )
+    if not underlying_verifiable:
+        prohibited.append("Verified underlying-asset ownership / registry identity")
+    if not economic_verifiable:
+        prohibited.extend(
+            [
+                "Observed staking APY as a verified fact",
+                "Realized underlying revenue/yield distributions",
+            ]
+        )
+    if not token_ok:
+        prohibited.append("Any on-chain token identity fields")
+        recommended_scope = [
+            "Do not implement an adapter yet — research only until identity is confirmed"
+        ]
+
+    checklist = [
+        ("Token/asset identity independently confirmed", token_ok),
+        ("Relevant contracts confirmed", token_ok or underlying_verifiable or economic_verifiable),
+        ("Required APIs reachable", any(e.get("ok") for e in evidence)),
+        ("Required blockchain calls reproducible", token_ok),
+        ("Claim sources documented", True),
+        ("Independent evidence identified where available", independent_market or token_ok),
+        ("Conflicts documented", True),
+        ("Verification boundary defined", True),
+        ("Claims mapped to evidence", True),
+        ("Unknown values explicitly preserved", True),
+        ("Adapter outputs defined", True),
+        ("Schema compatibility checked", False),  # human/adapter phase
+        ("Scoring impact understood", False),
+        ("Snapshot reproducibility confirmed", False),
+        ("Human review completed", False),
+    ]
+
+    return {
+        "status": status,
+        "reason": reason,
+        "next_step": next_step,
+        "token_ok": token_ok,
+        "market_ok": market_ok,
+        "underlying_identified_in_docs": docs_claim_underlying,
+        "underlying_verifiable": underlying_verifiable,
+        "economic_verifiable": economic_verifiable,
+        "economic_bridge_verifiable": underlying_verifiable and economic_verifiable,
+        "independent_market": independent_market,
+        "independent_underlying": False,  # never true without third-party physical/attest
+        "blockers": blockers,
+        "conflicts": conflicts,
+        "claims": claims,
+        "recommended_scope": recommended_scope,
+        "prohibited": prohibited,
+        "checklist": checklist,
+        "researched_at": now,
+        "claim_bits": claim_bits,
+        "supply_observed": (
+            token_probe.get("totalSupply_tokens") if token_ok and token_probe else None
+        ),
+    }
+
+
 def build_spec_md(
     *,
     candidate: dict[str, Any],
@@ -371,11 +901,13 @@ def build_spec_md(
     token_probe: dict[str, Any] | None,
     dex_pairs: list[dict[str, Any]],
     coingecko_search: dict[str, Any] | None,
+    assessment: dict[str, Any],
 ) -> str:
     today = date.today().isoformat()
     name = candidate["display_name"]
     slug = candidate["slug"]
     notes = candidate.get("notes", "")
+    seeds = candidate.get("seeds") or []
 
     rows = []
     for e in evidence:
@@ -389,62 +921,14 @@ def build_spec_md(
         rows.append(f"| `{e['url']}` | {result} |")
 
     reachable = [e for e in evidence if e["ok"]]
-    blob = " ".join(e.get("raw_text") or e.get("excerpt") or "" for e in reachable)
+    official_hosts = sorted(
+        {
+            urlparse(u).netloc
+            for u in seeds + [e["url"] for e in reachable]
+            if urlparse(u).netloc
+        }
+    )
 
-    # Claim extraction (quoted from reachable text — not invented).
-    claimed_yield = None
-    for pat in (
-        r"(\d+\s*%\s*to\s*\d+\s*%\s*APY)",
-        r"(\d+\s*[–-]\s*\d+\s*%\s*APY)",
-        r"(APY[s]?\s*\([^)]*\d+\s*[–-]\s*\d+%[^)]*\))",
-        r"(5%\s*to\s*18%\s*APY)",
-        r"(5\s*[–-]\s*18%\s*APY)",
-    ):
-        m = re.search(pat, blob, flags=re.I)
-        if m:
-            claimed_yield = m.group(1)
-            break
-
-    staking_lock = None
-    m = re.search(r"(lock-up periods?\s*\([^)]+\))", blob, flags=re.I)
-    if m:
-        staking_lock = m.group(1)
-    elif re.search(r"30\s*[–-]\s*360\s*days", blob, flags=re.I):
-        staking_lock = "30–360 days (stated in docs)"
-
-    # Conflicts: fully circulating vs vesting
-    conflict_lines: list[str] = []
-    if re.search(r"fully circulating", blob, flags=re.I) and re.search(
-        r"vesting", blob, flags=re.I
-    ):
-        conflict_lines.append(
-            "- Official token docs describe the **7.2B supply as fully "
-            "circulating** (no further mint / no reserved release), while the "
-            "lock-up page describes **team/partner vesting cliffs**. These "
-            "cannot both be complete descriptions of the same allocation "
-            "schedule without clarification."
-        )
-    if claimed_yield and not token_probe:
-        conflict_lines.append(
-            "- Marketing/docs claim staking APYs, but **no staking contract "
-            "address** was confirmed in this pass."
-        )
-    if claimed_yield and token_probe and token_probe.get("ok"):
-        conflict_lines.append(
-            "- Docs claim staking APYs / profit distribution contracts, but "
-            "this research pass only confirmed the **ERC-20 token contract** "
-            "on-chain. Ownership / staking / profit-distribution contract "
-            "addresses were **not** published in the reachable docs indexed "
-            "here."
-        )
-
-    if not conflict_lines:
-        conflict_lines.append(
-            "- No hard textual conflict isolated beyond normal marketing vs "
-            "evidence gaps (see confidence table)."
-        )
-
-    # Token / identity block
     if token_probe and token_probe.get("ok"):
         supply = token_probe.get("totalSupply_tokens")
         supply_s = (
@@ -452,7 +936,7 @@ def build_spec_md(
         )
         identity_token = f"""| Field | Observed |
 | --- | --- |
-| Chain | Polygon (via DexScreener pairs + `eth_call` on Polygon RPC) |
+| Chain | {token_probe.get("chain")} |
 | Token contract | `{token_probe["address"]}` |
 | `name()` | `{token_probe.get("name")}` |
 | `symbol()` | `{token_probe.get("symbol")}` |
@@ -461,13 +945,19 @@ def build_spec_md(
 | RPC used | `{token_probe.get("rpc")}` |"""
     else:
         identity_token = (
-            "No ERC-20 contract was confirmed via live `eth_call` in this "
-            "pass. Official docs claim an ERC-20 on Polygon named AGF, but "
-            "the **contract address is not printed** in the GitBook pages "
-            "fetched here — address attribution below relies on DexScreener "
-            "market metadata matching name/symbol, which is supporting "
-            "evidence only until the issuer publishes the address in docs."
+            "No ERC-20 (or equivalent) contract was confirmed via live "
+            "`eth_call` in this pass for a token identity matching this "
+            "project. Marketing may describe a token, but without a "
+            "confirmed address + successful RPC getters, Tokn cannot treat "
+            "token identity as verified."
         )
+        if token_probe and token_probe.get("unconfirmed_ticker_collision_risk"):
+            identity_token += (
+                f"\n\n**Unconfirmed short-ticker Dex hit (not used as identity):** "
+                f"`{token_probe.get('symbol')}` / `{token_probe.get('name')}` at "
+                f"`{token_probe.get('address')}` on `{token_probe.get('chain')}` — "
+                f"{token_probe.get('error')}"
+            )
 
     dex_rows = []
     for p in dex_pairs[:5]:
@@ -482,45 +972,177 @@ def build_spec_md(
     if not dex_rows:
         dex_rows.append("| — | — | — | — | — |")
 
-    cg_note = (
-        "CoinGecko search API returned **zero** coins for query `agrifi` "
-        "in this pass — no independent CoinGecko listing confirmed."
-        if coingecko_search is not None
-        else "CoinGecko search not run."
-    )
+    cg_coins = (coingecko_search or {}).get("coins") or []
+    if coingecko_search is None:
+        cg_note = "CoinGecko search not run."
+    elif cg_coins:
+        cg_note = (
+            "CoinGecko search returned hit(s): "
+            + ", ".join(
+                f"{c.get('name')} ({c.get('symbol')})" for c in cg_coins[:5]
+            )
+            + " — still not proof of underlying-asset verification."
+        )
+    else:
+        q = candidate_search_terms(candidate)[0]
+        cg_note = (
+            f"CoinGecko search API returned **zero** coins for query `{q}` "
+            "in this pass — no independent CoinGecko listing confirmed."
+        )
 
     excerpt_blocks = []
     for e in reachable[:8]:
-        snippet = (e.get("excerpt") or "")[:600].replace("|", "/")
+        snippet = md_escape((e.get("excerpt") or "")[:600])
         excerpt_blocks.append(f"### `{e['url']}`\n\n> {snippet}\n")
     if not excerpt_blocks:
         excerpt_blocks.append("_No reachable research URL returned extractable text._\n")
 
-    recommended = []
-    if token_probe and token_probe.get("ok"):
-        recommended.append(
-            f"- **On-chain ERC-20 reads** against `{token_probe['address']}` "
-            f"on Polygon (`name`/`symbol`/`decimals`/`totalSupply`/`balanceOf`) "
-            f"via public RPC — confirmed reachable this pass."
+    # Narrative research sections (generic)
+    claim_bits = assessment["claim_bits"]
+    confirmed_lines = []
+    if assessment["token_ok"]:
+        confirmed_lines.append(
+            f"- Token eth_call identity confirmed on **{token_probe.get('chain')}** "
+            f"at `{token_probe.get('address')}` "
+            f"({token_probe.get('name')}/{token_probe.get('symbol')})."
         )
-    recommended.append(
-        "- **Official GitBook markdown** (`*.md` / `llms.txt`) for claimed "
-        "payout/staking mechanics — reachable, but treat as self-reported."
-    )
-    recommended.append(
-        "- **Official blog + LLM knowledge page** for product claims "
-        "(fractional farmland, profit sharing) — self-reported."
-    )
-    if dex_pairs:
-        recommended.append(
-            "- **DexScreener public API** for pair liquidity / price context "
-            "only — not proof of farmland backing or yield."
+    if assessment["market_ok"]:
+        confirmed_lines.append(
+            f"- DexScreener reports {len(dex_pairs)} pair(s) for the probed token "
+            "(market context only)."
         )
-    recommended.append(
-        "- **Do not** treat whitepaper PDF marketing, undocumented staking "
-        "APYs, or unnamed ownership/profit contracts as adapter inputs until "
-        "addresses and events are published and independently readable."
+    confirmed_lines.append(
+        f"- {sum(1 for e in evidence if e.get('ok'))}/{len(evidence)} research "
+        "URLs reachable in this pass."
     )
+    if not assessment["underlying_verifiable"]:
+        confirmed_lines.append(
+            "- **No** independently queryable underlying-asset registry/ownership "
+            "contract was confirmed."
+        )
+    if not assessment["economic_verifiable"]:
+        confirmed_lines.append(
+            "- **No** independently queryable staking/profit/royalty distribution "
+            "contract was confirmed."
+        )
+
+    docs_claim_lines = []
+    if claim_bits.get("ownership"):
+        docs_claim_lines.append(f"- {claim_bits['ownership']}")
+    if claim_bits.get("royalty"):
+        docs_claim_lines.append(f"- {claim_bits['royalty']}")
+    if claim_bits.get("yield"):
+        docs_claim_lines.append(f"- Claimed yield/APY language: `{claim_bits['yield']}`")
+    if claim_bits.get("staking_lock"):
+        docs_claim_lines.append(f"- Staking lock language: `{claim_bits['staking_lock']}`")
+    if not docs_claim_lines:
+        docs_claim_lines.append(
+            "- Official pages describe a capital-style product; see excerpts."
+        )
+
+    conflict_lines = assessment["conflicts"] or [
+        "- No hard textual conflict isolated beyond marketing vs evidence gaps."
+    ]
+
+    # Claim matrix table
+    claim_rows = []
+    for c in assessment["claims"]:
+        claim_rows.append(
+            "| "
+            + " | ".join(
+                md_escape(c[k])
+                for k in (
+                    "claim",
+                    "claimed_value",
+                    "source",
+                    "source_type",
+                    "fact_domain",
+                    "verification_method",
+                    "current_status",
+                    "adapter_output",
+                    "blocker",
+                )
+            )
+            + " |"
+        )
+
+    # Recommended inputs table
+    input_rows: list[str] = []
+    if assessment["token_ok"] and token_probe:
+        input_rows.append(
+            f"| ERC-20 getters | blockchain | `{token_probe['address']}` on "
+            f"{token_probe['chain']} | eth_call name/symbol/decimals/totalSupply "
+            f"via `{token_probe['rpc']}` | identity + supply | on snapshot / daily | "
+            f"**required** — token identity |"
+        )
+    if assessment["market_ok"] and token_probe:
+        input_rows.append(
+            f"| DEX market context | DEX/indexer | "
+            f"`https://api.dexscreener.com/latest/dex/tokens/{token_probe['address']}` | "
+            f"GET JSON pairs | price/liquidity context | optional cadence | "
+            f"**optional** — never as backing proof |"
+        )
+    for e in reachable[:6]:
+        role = "**optional** — self-reported claims provenance"
+        if "gitbook" in e["url"] or "docs" in e["url"]:
+            role = "**required** for claims[] sourcing (self-reported)"
+        input_rows.append(
+            f"| Official page text | official documentation | `{e['url']}` | "
+            f"HTTP GET + text extract | claim language / product description | "
+            f"on research refresh | {role} |"
+        )
+    if not input_rows:
+        input_rows.append(
+            "| — | — | — | — | — | — | No safe adapter inputs identified |"
+        )
+
+    # Do not use
+    dont_use = [
+        "| Marketing slogans without contracts/APIs | Self-reported; not independently queryable |",
+        "| Unnamed ownership/staking/profit contracts | Described in docs but address missing |",
+        "| DEX liquidity as proof of underlying-asset liquidity/backing | Category error |",
+        "| Project's own unverified API (if any) as independent verification | Same trust domain as issuer |",
+        "| Unextracted PDF bytes as confirmation of a specific numeric claim | PDF may be reachable without text verification |",
+        "| Unrelated DEX tickers sharing a short symbol | Symbol collision risk |",
+    ]
+
+    checklist_lines = []
+    for label, done in assessment["checklist"]:
+        if done:
+            checklist_lines.append(f"- [x] {label}")
+        else:
+            checklist_lines.append(f"- [ ] {label}")
+
+    yaml_block = f"""```yaml
+adapter_readiness:
+  status: {assessment["status"]}
+  researched_at: "{assessment["researched_at"]}"
+
+  token_verification:
+    available: {str(assessment["token_ok"]).lower()}
+
+  underlying_asset_verification:
+    available: {str(assessment["underlying_verifiable"]).lower()}
+
+  economic_mechanism_verification:
+    available: {str(assessment["economic_verifiable"]).lower()}
+
+  market_data:
+    available: {str(assessment["market_ok"]).lower()}
+
+  independent_sources:
+    available: {str(assessment["independent_market"]).lower()}
+    note: "Independent market/indexer data ≠ independent underlying-asset verification"
+
+  critical_blockers:
+{chr(10).join(f'    - "{b}"' for b in (assessment["blockers"] or ["None recorded"]))}
+
+  recommended_adapter_scope:
+{chr(10).join(f'    - "{s}"' for s in assessment["recommended_scope"])}
+
+  prohibited_outputs:
+{chr(10).join(f'    - "{s}"' for s in (assessment["prohibited"] or ["None"])) }
+```"""
 
     return f"""# {name} — adapter specification (research)
 
@@ -544,10 +1166,8 @@ Backlog notes: {notes}
 | --- | --- |
 | Display name | {name} |
 | Slug | `{slug}` |
-| Issuer / brand (self-described) | Agrifi / AgriFi (official site author meta + docs) |
-| Primary site | https://agrifi.tech/ |
-| Docs | https://agrifi.gitbook.io/agrifi-docs |
-| App shell | https://agrifi.app/ (HTTP 200; minimal HTML shell in this probe) |
+| Issuer / brand (self-described) | {name} |
+| Seed hosts | {", ".join(f"`{h}`" for h in official_hosts) or "—"} |
 
 ### Token / chain (live probe)
 
@@ -567,41 +1187,21 @@ Backlog notes: {notes}
 
 **What official sources claim**
 
-- AgriFi presents as a Polygon-based agricultural finance / RWA platform
-  combining farmland tokenization, DeFi staking, supply-chain traceability,
-  IoT monitoring, and (documented as a concept) parametric crop insurance
-  (site, blog, GitBook, LLM knowledge page).
-- Farmland / crop-production rights are described as tokenized so holders get
-  **fractional ownership** and participate in agricultural revenue
-  (GitBook Concept 2 RWA; token docs; blog 2025-10-17 and 2026-04-17 posts).
-- Architecture docs describe off-chain collection of farm revenue (crop sales /
-  leases), conversion to stablecoins, and on-chain distribution via a
-  “Profit Distribution Contract” proportional to holdings — **addresses for
-  those modules were not found in reachable docs**.
+{chr(10).join(docs_claim_lines)}
 
 **What was actually confirmed here**
 
-- Marketing site, blog articles, GitBook markdown, whitepaper PDF, and LLM
-  knowledge HTML are reachable.
-- A Polygon ERC-20 with `name=AGRIFI` / `symbol=AGF` / `decimals=18` /
-  `totalSupply=7.2e9` token units responds at the DexScreener-attributed
-  address (see §1) via public RPC.
-- **No** public registry of specific farmland parcels, harvest ledgers, or
-  profit-distribution events was found in this pass.
-- **No** independent CoinGecko listing matched `agrifi` via the public search
-  API in this pass.
+{chr(10).join(confirmed_lines)}
 
 ---
 
 ## 3. Claimed payout mechanism & claimed yield
 
-| Claim | Source (reachable) | Confirmed on-chain / API? |
+| Claim theme | Observed language | Independently queryable now? |
 | --- | --- | --- |
-| AGF enables fractional farmland ownership + profit sharing | GitBook token page; Concept 2 RWA; blog | **Not confirmed** — no ownership/profit contract addresses published in fetched docs |
-| Staking APY {"`"+claimed_yield+"`" if claimed_yield else "5–18% (docs/blog)"} | GitBook architecture + blog | **Not confirmed** — staking contract address not found |
-| Lock-ups {"`"+staking_lock+"`" if staking_lock else "30–360 days + 2% early exit (architecture docs)"} | GitBook architecture | **Not confirmed** on-chain |
-| Team/partner vesting schedules | GitBook lock-up page | Allocation schedule **conflicts** with “fully circulating” language on token page |
-| ERC-20 on Polygon, 7.2B supply | GitBook + LLM page; matches `totalSupply()` if address in §1 is accepted | Token supply **matches** RPC read for the probed contract |
+| Advertised yield / APY | {claim_bits.get("yield") or "not clearly extracted"} | {"yes" if assessment["economic_verifiable"] else "**no**"} |
+| Ownership / royalty / RWA claim | {claim_bits.get("ownership") or claim_bits.get("royalty") or "see docs excerpts"} | {"yes" if assessment["underlying_verifiable"] or assessment["economic_verifiable"] else "**no**"} |
+| Token supply | {claim_bits.get("supply") or ("matches eth_call" if assessment["token_ok"] else "not confirmed")} | {"yes" if assessment["token_ok"] else "**no**"} |
 
 ---
 
@@ -609,14 +1209,13 @@ Backlog notes: {notes}
 
 | Contract / surface | Address | Evidence | Adapter relevance |
 | --- | --- | --- | --- |
-| AGF ERC-20 (probed) | `{token_probe["address"] if token_probe and token_probe.get("ok") else "not confirmed"}` | DexScreener pair baseToken + Polygon `eth_call` | Identity / supply / holdings only |
-| Ownership mapping | **Not published** in fetched docs | Architecture describes module | Required for farm-level claims — **blocked** |
-| Staking | **Not published** | Architecture describes 30–360d / 5–18% APY | Required for staking-yield claims — **blocked** |
-| Profit distribution | **Not published** | Architecture describes stablecoin distributions | Required for realized farm yield — **blocked** |
-| Governance | **Not published** | Architecture describes DAO voting | Optional |
+| Primary token (probed) | `{token_probe["address"] if token_probe and token_probe.get("ok") else "not confirmed"}` | {"eth_call + market metadata" if assessment["token_ok"] else "not confirmed"} | Identity / supply only |
+| Ownership / asset registry | **Not confirmed** | Docs may describe; address not verified | Required for underlying claims — blocked unless published |
+| Staking / rewards | **Not confirmed** | Docs may describe; address not verified | Required for APY observation — blocked unless published |
+| Profit / royalty distribution | **Not confirmed** | Docs may describe; address not verified | Required for realized yield — blocked unless published |
 
-**Events:** No verified event signatures / merklized harvest reports / public
-subgraph endpoint for AgriFi farm economics were found in this research pass.
+**Events:** No verified payout/harvest event ABI + public indexer endpoint for
+this candidate’s underlying economics was confirmed in this research pass.
 
 ---
 
@@ -628,23 +1227,22 @@ subgraph endpoint for AgriFi farm economics were found in this research pass.
 
 | Indexer / market API | Result |
 | --- | --- |
-| DexScreener token/pair API | Reachable — used for pair liquidity / price context |
-| CoinGecko search `agrifi` | Reachable API; **0** coin hits |
-| Polygon public RPC `eth_call` | Reachable for ERC-20 getters on probed address |
+| DexScreener search/token API | {"Reachable" if assessment["market_ok"] or True else "n/a"} — used for market context when pairs match |
+| CoinGecko search | {cg_note} |
+| Public EVM RPC eth_call | {"Reachable for probed token" if assessment["token_ok"] else "No successful project-matched token probe"} |
 
 ---
 
 ## 6. Official vs independent sources & conflicts
 
-**Official (self-reported):** agrifi.tech, blog.agrifi.tech, GitBook docs,
-whitepaper PDF, LLM knowledge page, agrifi.app shell.
+**Official (self-reported):** {", ".join(f"`{h}`" for h in official_hosts) or "seed sites"}
 
-**Independent / market:** DexScreener pairs for the AGF/Polygon token;
-{cg_note}
+**Independent / market:** DexScreener (if pairs match); CoinGecko as noted.
+Independent market metadata is **not** independent underlying-asset verification.
 
 **Conflicts / tensions**
 
-{chr(10).join(conflict_lines)}
+{chr(10).join("- " + c if not c.startswith("-") else c for c in conflict_lines)}
 
 ---
 
@@ -652,37 +1250,154 @@ whitepaper PDF, LLM knowledge page, agrifi.app shell.
 
 | Claim | Confidence now | Why |
 | --- | --- | --- |
-| Project exists as a public web brand with docs/blog | **High** | Multiple official HTTP 200 surfaces with consistent Agrifi branding |
-| Capital-style (non-operator) marketing path | **Medium-high** | Docs emphasize token purchase / fractional ownership / staking without hardware-operator requirements — aligns with discovery `candidate-for-adapter`, still first-pass |
-| AGF ERC-20 on Polygon with 7.2B supply | **Medium** (address) / **High** (RPC fields if address accepted) | Address comes from DexScreener metadata matching name/symbol, **not** from an issuer-published contract list in GitBook; RPC fields match marketed supply |
-| Specific farmland assets are on-chain & identifiable | **Low** | No parcel registry, legal wrappers, or ownership-contract addresses found |
-| Staking APY 5–18% is observable | **Low** | Claimed in docs/blog; staking contract not located; no reward events read |
-| Realized agricultural profit distributions to holders | **Low** | Described architecturally; no distribution contract / payout history found |
-| Independent market listing quality | **Low** | Thin DEX liquidity observed; no CoinGecko hit in this pass |
+| Public project web presence | {"High" if reachable else "Low"} | Reachable official HTTP surfaces |
+| Capital-style (non-operator) marketing path | Medium-high | Discovery already classified `candidate-for-adapter` — first-pass only |
+| Token identity on-chain | {"High" if assessment["token_ok"] else "Low"} | {"Successful eth_call getters" if assessment["token_ok"] else "No matched token probe"} |
+| Underlying asset independently verifiable | {"High" if assessment["underlying_verifiable"] else "Low"} | Ownership/registry contract reachability |
+| Economic mechanism / realized yield observable | {"High" if assessment["economic_verifiable"] else "Low"} | Distribution/staking contract reachability |
+| Independent market listing quality | {"Medium" if assessment["market_ok"] else "Low"} | Dex/CG presence without implying backing |
 
 ---
 
 ## 8. Recommended data sources for an eventual adapter
 
-{chr(10).join(recommended)}
+See **Recommended Adapter Inputs** below for the concrete table. High-level:
 
-**Honest adapter boundary (if ever greenlit):** an MVP could snapshot ERC-20
-identity + supply + optional DEX context, and must leave
-`realized_yield_pct` / farm-level verification **null** until ownership and
-profit-distribution contracts (or an equivalent public attestation API) are
-reachable — same SourceError / no-fabrication discipline as Glow/RealT/Elmnts.
+{chr(10).join("- " + s for s in assessment["recommended_scope"])}
+
+**Honest adapter boundary:** implement only independently queryable surfaces;
+leave unrealized underlying/yield fields **null** rather than inventing values.
 
 ---
 
-## 9. Human decision gate
+## 9. Adapter Readiness
+
+**Status: `{assessment["status"]}`**
+
+Allowed values: `adapter-ready` | `token-data-only` | `blocked`.
+
+### Readiness rationale
+
+{assessment["reason"]}
+
+**What can currently be verified:** {", ".join(c["claim"] for c in assessment["claims"] if c["current_status"] in ("verified", "observable")) or "none beyond marketing reachability"}
+
+**What cannot currently be verified:** {", ".join(assessment["prohibited"]) or "see claim matrix"}
+
+**Main blocker(s):** {"; ".join(assessment["blockers"]) or "none recorded"}
+
+**To move to the next state:** {assessment["next_step"]}
+
+---
+
+## 10. Claim-to-Verification Map
+
+| Claim | Claimed value | Source | Source type | Fact domain | Verification method | Current status | Adapter output | Blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+{chr(10).join(claim_rows)}
+
+Status vocabulary: `verified` | `partially-verified` | `observable` |
+`self-reported` | `conflicted` | `unverified` | `blocked`.
+
+---
+
+## 11. Verification Boundary
+
+### Token-level verification
+
+| Capability | Available now? |
+| --- | --- |
+| Contract identity / symbol / decimals | {"YES" if assessment["token_ok"] else "NO"} |
+| Total supply | {"YES" if assessment["token_ok"] else "NO"} |
+| Holder balances / transfers (generic ERC-20) | {"YES (standard)" if assessment["token_ok"] else "NO"} |
+| DEX price | {"YES" if assessment["market_ok"] else "NO"} |
+| DEX liquidity | {"YES" if assessment["market_ok"] else "NO"} |
+
+### Underlying-asset verification
+
+| Capability | Available now? |
+| --- | --- |
+| Physical / real-world asset identity | {"YES" if assessment["underlying_verifiable"] else "NO"} |
+| Asset ownership / registry | {"YES" if assessment["underlying_verifiable"] else "NO"} |
+| Infrastructure operation / production | NO |
+| Revenue generation / leases / harvests | {"YES" if assessment["economic_verifiable"] else "NO"} |
+| Actual distributions to holders | {"YES" if assessment["economic_verifiable"] else "NO"} |
+
+### Bridge summary
+
+```text
+Token exists (independently queryable): {"YES" if assessment["token_ok"] else "NO"}
+Underlying asset identified in docs: {"YES" if assessment["underlying_identified_in_docs"] else "NO"}
+Underlying asset independently verifiable: {"YES" if assessment["underlying_verifiable"] else "NO"}
+Economic connection between token and asset verifiable: {"YES" if assessment["economic_bridge_verifiable"] else "NO"}
+```
+
+**Reminder:** Independent market/indexer sources ≠ independent underlying-asset
+verification.
+
+---
+
+## 12. Recommended Adapter Inputs
+
+| Input | Source | Exact endpoint/contract | Method/query | Expected data | Frequency | Verification role |
+| --- | --- | --- | --- | --- | --- | --- |
+{chr(10).join(input_rows)}
+
+---
+
+## 13. Sources Not Suitable for Verification
+
+| Source / pattern | Why unsuitable |
+| --- | --- |
+{chr(10).join(dont_use)}
+
+---
+
+## 14. Adapter Implementation Boundary
+
+### What the future adapter SHOULD implement
+
+{chr(10).join("- " + s for s in assessment["recommended_scope"])}
+
+### What the future adapter MUST NOT implement
+
+{chr(10).join("- " + s for s in (assessment["prohibited"] or ["Nothing additional beyond empty nulls"]))}
+
+### What requires human review
+
+- Whether the project token (if any) should be treated as the representation
+  of specific underlying assets vs a generic ecosystem/utility token.
+- Whether DexScreener-attributed contract addresses are acceptable before
+  issuer-published address lists exist.
+- Whether to greenlight any adapter at `{assessment["status"]}` readiness.
+
+---
+
+## 15. Promotion Checklist
+
+{chr(10).join(checklist_lines)}
+
+`[x]` = demonstrated in this research pass. `[ ]` = not demonstrated (human /
+adapter phase).
+
+---
+
+## 16. Human decision gate
 
 This file does **not** authorize adapter work. Next steps for a human:
 
 1. Review [`FINDINGS.md`](./FINDINGS.md) + this `ADAPTER_SPEC.md`.
 2. Decide whether to greenlight a bespoke adapter (manual, like Glow/RealT/Elmnts).
-3. If greenlit: require issuer-published contract addresses for ownership /
-   staking / distributions before treating yield claims as verifiable.
-4. If not greenlit: leave classification as research-only; no code.
+3. If greenlit: implement **only** the SHOULD list; keep MUST NOT as null/unavailable.
+4. If not greenlit: leave as research-only; no code.
+
+---
+
+## 17. Machine-readable summary (research only)
+
+Not consumed by scoring/schema. For humans and future tooling only.
+
+{yaml_block}
 
 ---
 
@@ -712,71 +1427,230 @@ def research_candidate(
             )
 
     urls = expand_research_urls(candidate)
-    evidence = [fetch_url(u) for u in urls]
+    evidence: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    for u in urls:
+        if u in seen_urls:
+            continue
+        seen_urls.add(u)
+        evidence.append(fetch_url(u))
 
-    # Discover additional .md links from llms.txt bodies.
-    extra_fetches: list[dict[str, Any]] = []
-    for e in evidence:
-        if e["ok"] and e["url"].endswith("llms.txt"):
+    # Follow interesting links from reachable HTML (bounded).
+    follow: list[str] = []
+    for e in list(evidence):
+        if e.get("ok") and e.get("links"):
+            follow.extend(interesting_follow_links(e["links"], limit=8))
+        if e.get("ok") and e["url"].endswith("llms.txt"):
             for m in re.findall(r"https://[^\s\)]+\.md", e.get("raw_text") or ""):
-                if m not in {x["url"] for x in evidence}:
-                    # Cap follow-ups to keep the cycle bounded.
-                    if len(extra_fetches) >= 6:
-                        break
-                    # Prefer technology / concept pages.
-                    if any(
-                        k in m
-                        for k in (
-                            "token",
-                            "architecture",
-                            "concept-2",
-                            "lock-up",
-                            "rwa",
-                        )
-                    ):
-                        extra_fetches.append(fetch_url(m))
-    evidence.extend(extra_fetches)
+                if any(
+                    k in m.lower()
+                    for k in (
+                        "token",
+                        "architecture",
+                        "concept",
+                        "lock-up",
+                        "rwa",
+                        "royalty",
+                        "nsr",
+                    )
+                ):
+                    follow.append(m)
+    for u in follow[:12]:
+        if u not in seen_urls:
+            seen_urls.add(u)
+            evidence.append(fetch_url(u))
 
     texts = [e.get("raw_text") or "" for e in evidence if e.get("ok")]
+    blob = " ".join(texts)
     addrs = collect_addresses(texts)
 
-    # DexScreener search for AGF / AgriFi when docs omit addresses.
-    dex_hits = dexscreener_token_search("AGF agrifi")
-    if not dex_hits:
-        dex_hits = dexscreener_token_search("AGRIFI")
-    token_addr = None
-    for p in dex_hits:
-        base = p.get("baseToken") or {}
-        sym = (base.get("symbol") or "").upper()
-        name = (base.get("name") or "").upper()
-        if sym == "AGF" and "AGRI" in name:
-            token_addr = base.get("address")
-            break
-    if not token_addr and addrs:
-        token_addr = addrs[0]
-
-    polygon_rpc = "https://polygon-bor-rpc.publicnode.com"
-    token_probe = probe_erc20(token_addr, polygon_rpc) if token_addr else None
-    dex_pairs = dexscreener_by_token(token_addr) if token_addr else []
-
-    coingecko_search = None
-    try:
-        req = Request(
-            "https://api.coingecko.com/api/v3/search?query=agrifi",
-            headers={"User-Agent": UA},
+    # Token discovery via DexScreener using candidate terms (generic — no
+    # asset-specific hardcoded addresses). Short tickers require stronger
+    # corroboration than symbol equality alone (collision risk).
+    notes_l = (candidate.get("notes") or "").lower()
+    product_bits = [
+        b
+        for b in (
+            candidate.get("display_name") or "",
+            candidate.get("slug") or "",
+            *re.findall(
+                r"\b(agri|farm|farmland|mining|royalty|nsr|rwa|tokenized)\b",
+                notes_l,
+                flags=re.I,
+            ),
         )
-        with urlopen(req, timeout=TIMEOUT) as resp:
-            coingecko_search = json.loads(resp.read())
-    except Exception as e:
-        coingecko_search = {"error": f"{type(e).__name__}: {e}", "coins": []}
+        if b
+    ]
+    dex_hits: list[dict[str, Any]] = []
+    for term in candidate_search_terms(candidate):
+        dex_hits.extend(dexscreener_token_search(term, prefer_name_bits=product_bits))
+        if dex_hits:
+            break
+
+    name_l = (candidate.get("display_name") or "").lower()
+    slug_l = (candidate.get("slug") or "").lower()
+    compact_name = re.sub(r"[^a-z0-9]", "", name_l)
+    short_ticker = len(compact_name) <= 4
+
+    def _strong_token_name_match(bname: str, bsym: str) -> bool:
+        """Reject bare short-ticker collisions without product corroboration."""
+        bn = re.sub(r"[^a-z0-9]", "", (bname or "").lower())
+        bs = (bsym or "").lower()
+        # Longer product names: require stem containment in token name.
+        if len(compact_name) >= 5:
+            return compact_name[:5] in bn or compact_name in bn
+        # Short tickers (e.g. PTX): symbol match alone is insufficient.
+        # Require (a) token name longer than ticker with product keywords, or
+        # (b) official research text already embeds this address (checked later).
+        if bs != compact_name and compact_name not in bn:
+            return False
+        product_kw = [
+            k
+            for k in (
+                "mining",
+                "royalty",
+                "nsr",
+                "farm",
+                "farmland",
+                "agri",
+                "rwa",
+                slug_l.replace("-", ""),
+            )
+            if k and len(k) >= 3
+        ]
+        if any(k in bn for k in product_kw if k != compact_name):
+            return True
+        # Name is more than ticker+generic "coin/token" fluff → weak accept only
+        # if display name itself is longer branding (handled above). Else reject.
+        fluff = {"coin", "token", "tokens", "the", "protocol", "finance", "fi"}
+        extras = [w for w in re.findall(r"[a-z]+", (bname or "").lower()) if w not in fluff]
+        return False if short_ticker else bool(extras)
+
+    token_addr = None
+    chain = "ethereum"
+    addr_from_docs = False
+    # Prefer addresses embedded in reachable official research text.
+    if addrs:
+        for a in addrs[:6]:
+            # Guess chain from surrounding blob keywords near research pass.
+            ch = "polygon" if "polygon" in blob.lower() else (
+                "bsc" if re.search(r"\b(bsc|bnb|binance)\b", blob, flags=re.I) else "ethereum"
+            )
+            probe_try = probe_erc20(a, CHAIN_RPC.get(ch, CHAIN_RPC["ethereum"]), ch)
+            if probe_try and probe_try.get("ok"):
+                tname = (probe_try.get("name") or "").lower()
+                tsym = (probe_try.get("symbol") or "").lower()
+                if _strong_token_name_match(tname, tsym) or (
+                    compact_name and compact_name in re.sub(r"[^a-z0-9]", "", tname)
+                ):
+                    token_addr = a
+                    chain = ch
+                    addr_from_docs = True
+                    token_probe_docs = probe_try
+                    break
+        else:
+            token_probe_docs = None
+    else:
+        token_probe_docs = None
+
+    if not token_addr:
+        for p in dex_hits:
+            base = p.get("baseToken") or {}
+            bname = base.get("name") or ""
+            bsym = base.get("symbol") or ""
+            if _strong_token_name_match(bname, bsym):
+                token_addr = base.get("address")
+                chain = (p.get("chainId") or "ethereum").lower()
+                break
+
+    # Short-ticker Dex hits without docs address: keep as unconfirmed candidate
+    # only if we already found nothing — do not treat as verified identity.
+    unconfirmed_ticker_hit: dict[str, Any] | None = None
+    if not token_addr and short_ticker:
+        for p in dex_hits:
+            base = p.get("baseToken") or {}
+            bsym = (base.get("symbol") or "").lower()
+            if bsym == compact_name and base.get("address"):
+                unconfirmed_ticker_hit = {
+                    "address": base.get("address"),
+                    "chain": (p.get("chainId") or "ethereum").lower(),
+                    "name": base.get("name"),
+                    "symbol": base.get("symbol"),
+                    "note": (
+                        "Short-ticker DexScreener hit without issuer-published "
+                        "contract address or product-keyword name corroboration — "
+                        "not treated as confirmed token identity"
+                    ),
+                }
+                break
+
+    if addr_from_docs and token_probe_docs:
+        token_probe = token_probe_docs
+    else:
+        rpc = CHAIN_RPC.get(chain, CHAIN_RPC["ethereum"])
+        token_probe = probe_erc20(token_addr, rpc, chain) if token_addr else None
+        if token_probe and token_probe.get("ok"):
+            tname = token_probe.get("name") or ""
+            tsym = token_probe.get("symbol") or ""
+            if not _strong_token_name_match(tname, tsym) and not addr_from_docs:
+                token_probe = {
+                    "ok": False,
+                    "error": (
+                        f"Probed token {tname}/{tsym} failed strong identity match; "
+                        "discarded to avoid ticker collision"
+                    ),
+                    "address": token_addr,
+                    "chain": chain,
+                }
+                token_addr = None
+
+    # If only unconfirmed short-ticker hit remains, do not promote to token_ok.
+    if (not token_probe or not token_probe.get("ok")) and unconfirmed_ticker_hit:
+        token_probe = {
+            "ok": False,
+            "error": unconfirmed_ticker_hit["note"],
+            "address": unconfirmed_ticker_hit["address"],
+            "chain": unconfirmed_ticker_hit["chain"],
+            "name": unconfirmed_ticker_hit.get("name"),
+            "symbol": unconfirmed_ticker_hit.get("symbol"),
+            "unconfirmed_ticker_collision_risk": True,
+        }
+        token_addr = None
+
+    dex_pairs = (
+        dexscreener_by_token(token_addr)
+        if token_addr
+        else (
+            dexscreener_by_token(unconfirmed_ticker_hit["address"])
+            if unconfirmed_ticker_hit
+            else []
+        )
+    )
+    # Market pairs alone must not imply confirmed token identity.
+    if not token_addr:
+        dex_pairs = []
+
+    cg = coingecko_search(candidate_search_terms(candidate)[0])
+    claim_bits = extract_claim_snippets(blob)
+
+    assessment = build_assessment(
+        candidate=candidate,
+        evidence=evidence,
+        token_probe=token_probe,  # may be ok:false with collision-risk note
+        dex_pairs=dex_pairs,
+        coingecko=cg,
+        claim_bits=claim_bits,
+        blob=blob,
+    )
 
     spec_md = build_spec_md(
         candidate=candidate,
         findings_path=findings_path,
         evidence=evidence,
-        token_probe=token_probe,
+        token_probe=token_probe,  # render unconfirmed notes when present
         dex_pairs=dex_pairs,
-        coingecko_search=coingecko_search,
+        coingecko_search=cg,
+        assessment=assessment,
     )
     return {
         "slug": slug,
@@ -787,6 +1661,7 @@ def research_candidate(
         "evidence": evidence,
         "token_probe": token_probe,
         "dex_pair_count": len(dex_pairs),
+        "assessment": assessment,
         "date": date.today().isoformat(),
     }
 
@@ -794,7 +1669,6 @@ def research_candidate(
 def write_spec(result: dict[str, Any]) -> Path:
     out_dir = CANDIDATES_DIR / result["slug"]
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Hard scope: only ADAPTER_SPEC.md under this candidate directory.
     path = out_dir / "ADAPTER_SPEC.md"
     path.write_text(result["spec_md"], encoding="utf-8")
     return path
@@ -845,6 +1719,7 @@ def main(argv: list[str] | None = None) -> int:
             result.get("token_probe") and result["token_probe"].get("ok")
         )
         details["dex_pair_count"] = result.get("dex_pair_count")
+        details["adapter_readiness"] = (result.get("assessment") or {}).get("status")
 
         if args.dry_run:
             print(result["spec_md"])
@@ -861,8 +1736,6 @@ def main(argv: list[str] | None = None) -> int:
 
         path = write_spec(result)
         details["adapter_spec_path"] = str(path.relative_to(REPO_ROOT))
-
-        # Prove-it helper: refuse if we somehow wrote outside the candidate dir.
         rel = path.resolve().relative_to((CANDIDATES_DIR / result["slug"]).resolve())
         if rel != Path("ADAPTER_SPEC.md"):
             raise RuntimeError(f"Refusing unexpected write path: {path}")
@@ -877,6 +1750,7 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         print(f"Wrote {path}")
+        print(f"Adapter readiness: {details.get('adapter_readiness')}")
         print(
             "Research complete — human review of ADAPTER_SPEC.md required "
             "before any adapter work."
