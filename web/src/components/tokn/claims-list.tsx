@@ -36,7 +36,7 @@ export function ClaimsList({ asset }: { asset: ScoredAsset }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Verification</p>
-          <h2 className="mt-1 text-xl tracking-wide">Key claims and evidence</h2>
+          <h2 className="mt-1 text-xl">Key claims and evidence</h2>
         </div>
         <p className="text-[11px] text-[var(--tokn-muted)]">
           {claims.length} claim{claims.length === 1 ? "" : "s"} on this snapshot
@@ -74,7 +74,7 @@ export function ClaimsList({ asset }: { asset: ScoredAsset }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm tracking-wide">
+                      <p className="text-sm">
                         {claimTitle(claim.claim)}
                       </p>
                       <span className={`pill ${statusPill(status)}`}>
@@ -85,7 +85,7 @@ export function ClaimsList({ asset }: { asset: ScoredAsset }) {
                       Value: {formatClaimValue(claim.value)} · {claim.fact_domain}
                     </p>
                   </div>
-                  <span className="text-[10px] tracking-[0.12em] text-[var(--tokn-muted)]">
+                  <span className="text-[10px] text-[var(--tokn-muted)]">
                     {open ? "HIDE" : "DETAILS →"}
                   </span>
                 </button>

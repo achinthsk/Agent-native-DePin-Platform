@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AssetHeader } from "@/components/tokn/asset-header";
 import { AssetIntelligence } from "@/components/tokn/asset-intelligence";
+import { AssetSeriesChart } from "@/components/tokn/asset-series-chart";
 import { ClaimsList } from "@/components/tokn/claims-list";
 import { EvidenceSources, VerificationHistory } from "@/components/tokn/evidence-history";
 import { InvestmentSnapshot } from "@/components/tokn/investment-snapshot";
@@ -17,10 +18,11 @@ import { deriveHistoryEvents } from "@/lib/asset-helpers";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
+  { id: "market-chart", label: "Market chart" },
   { id: "verification", label: "Verification" },
-  { id: "intelligence", label: "Asset Intelligence" },
-  { id: "evidence", label: "Evidence & Sources" },
-  { id: "history", label: "Verification History" },
+  { id: "intelligence", label: "Asset intelligence" },
+  { id: "evidence", label: "Evidence & sources" },
+  { id: "history", label: "Verification history" },
 ] as const;
 
 export function AssetDetailPage({ assetId }: { assetId: string }) {
@@ -64,7 +66,7 @@ export function AssetDetailPage({ assetId }: { assetId: string }) {
         <aside className="hidden lg:block">
           <div className="glass sticky top-20 space-y-4 p-4">
             <p className="eyebrow">On this page</p>
-            <nav className="space-y-2 text-[11px] tracking-[0.1em] text-[var(--tokn-muted)]">
+            <nav className="space-y-2 text-[11px] text-[var(--tokn-muted)]">
               {SECTIONS.map((s) => (
                 <a
                   key={s.id}
@@ -104,6 +106,20 @@ export function AssetDetailPage({ assetId }: { assetId: string }) {
             <>
               <AssetHeader asset={asset} />
               <InvestmentSnapshot asset={asset} />
+              <section id="market-chart" className="glass p-5 sm:p-6">
+                <p className="eyebrow">Market data</p>
+                <h2 className="mt-1 text-xl font-semibold">
+                  Documented series
+                </h2>
+                <p className="mt-2 max-w-2xl text-[12px] leading-relaxed text-[var(--tokn-muted)]">
+                  Each asset shows a real chart from documented Sync samples,
+                  stored snapshot history, or the current four-axis scores —
+                  never an invented price path.
+                </p>
+                <div className="mt-4">
+                  <AssetSeriesChart asset={asset} history={history} />
+                </div>
+              </section>
               <ClaimsList asset={asset} />
               <AssetIntelligence asset={asset} />
               <EvidenceSources asset={asset} />

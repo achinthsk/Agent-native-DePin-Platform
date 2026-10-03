@@ -21,7 +21,7 @@ const TIER_META: Record<
 export function VerificationBadge({ tier }: { tier: string | null }) {
   if (!tier) {
     return (
-      <span className="inline-flex items-center rounded-full border border-[var(--border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
+      <span className="inline-flex items-center rounded-full border border-[var(--border)] px-2.5 py-1 font-mono text-[10px] uppercase text-[var(--muted)]">
         Tier unknown
       </span>
     );
@@ -33,7 +33,7 @@ export function VerificationBadge({ tier }: { tier: string | null }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wider",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercaser",
         meta.tone === "proof" &&
           "border-emerald-200 bg-emerald-50 text-emerald-800",
         meta.tone === "unverified" &&

@@ -39,7 +39,7 @@ function Dimension({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="eyebrow">{label}</p>
-          <p className="mt-1 text-xl tracking-wide">
+          <p className="mt-1 text-xl">
             {score.insufficient_data ? "—" : formatScore(score.value)}
             <span className="text-xs text-[var(--tokn-muted)]"> / 100</span>
           </p>
@@ -82,12 +82,12 @@ export function InvestmentSnapshot({ asset }: { asset: ScoredAsset }) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="text-[11px] tracking-[0.1em] text-[var(--tokn-muted)] underline-offset-4 hover:text-[var(--tokn-ink)] hover:underline"
+            className="text-[11px] text-[var(--tokn-muted)] underline-offset-4 hover:text-[var(--tokn-ink)] hover:underline"
           >
             How this snapshot works →
           </button>
         </div>
-        <h2 className="mt-3 max-w-xl text-2xl leading-tight tracking-wide sm:text-3xl">
+        <h2 className="mt-3 max-w-xl text-2xl font-semibold leading-tight sm:text-3xl">
           {headline.primary}
           <span className="mt-1 block text-[var(--tokn-warn)]">
             {headline.secondary}
@@ -163,10 +163,10 @@ export function InvestmentSnapshot({ asset }: { asset: ScoredAsset }) {
         {top ? (
           <>
             <div className="mt-3 rounded-xl border border-[rgba(180,35,24,0.28)] bg-[rgba(180,35,24,0.08)] p-4">
-              <p className="text-[11px] tracking-[0.14em] text-[var(--tokn-bad)]">
-                CONFLICTING CLAIMS
+              <p className="text-[11px] font-semibold text-[var(--tokn-bad)]">
+                Conflicting claims
               </p>
-              <h3 className="mt-2 text-lg tracking-wide">
+              <h3 className="mt-2 text-lg">
                 {claimTitle(top.a.claim).replace(/ \(.*/, "")}
               </h3>
               <p className="mt-2 text-[11px] text-[var(--tokn-muted)]">
@@ -195,9 +195,9 @@ export function InvestmentSnapshot({ asset }: { asset: ScoredAsset }) {
             </div>
             <a
               href="#verification"
-              className="mt-auto pt-4 text-[11px] tracking-[0.12em] text-[var(--tokn-muted)] hover:text-[var(--tokn-ink)]"
+              className="mt-auto pt-4 text-[11px] text-[var(--tokn-muted)] hover:text-[var(--tokn-ink)]"
             >
-              VIEW EVIDENCE →
+              View evidence →
             </a>
           </>
         ) : (
@@ -210,9 +210,9 @@ export function InvestmentSnapshot({ asset }: { asset: ScoredAsset }) {
             </p>
             <a
               href="#verification"
-              className="mt-4 text-[11px] tracking-[0.12em] hover:text-[var(--tokn-ink)]"
+              className="mt-4 text-[11px] hover:text-[var(--tokn-ink)]"
             >
-              VIEW CLAIMS →
+              View claims →
             </a>
           </div>
         )}

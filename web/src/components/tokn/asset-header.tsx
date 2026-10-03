@@ -22,21 +22,21 @@ export function AssetHeader({ asset }: { asset: ScoredAsset }) {
     <section className="glass p-5 sm:p-6">
       <Link
         href="/"
-        className="text-[11px] tracking-[0.12em] text-[var(--tokn-muted)] hover:text-[var(--tokn-ink)]"
+        className="text-[11px] text-[var(--tokn-muted)] hover:text-[var(--tokn-ink)]"
       >
-        ← BACK TO ASSETS
+        ← Back to assets
       </Link>
       <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[rgba(26,28,31,0.1)] bg-white/70 text-sm tracking-[0.1em]">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[rgba(26,28,31,0.1)] bg-white/70 text-sm">
             {monogram(asset.name)}
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl tracking-wide sm:text-3xl">{asset.name}</h1>
+              <h1 className="text-2xl sm:text-3xl">{asset.name}</h1>
               {symbol ? <span className="pill pill-muted">{symbol}</span> : null}
             </div>
-            <p className="mt-2 text-[11px] tracking-[0.1em] text-[var(--tokn-muted)]">
+            <p className="mt-2 text-[11px] text-[var(--tokn-muted)]">
               {assetClassLabel(asset.asset_class)}
             </p>
             <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-[var(--tokn-muted)]">
@@ -49,7 +49,7 @@ export function AssetHeader({ asset }: { asset: ScoredAsset }) {
           <p className="eyebrow">Token price</p>
           {registry ? (
             <>
-              <p className="mt-1 text-3xl tracking-wide">
+              <p className="mt-1 text-3xl">
                 {registry.current.toFixed(4)}
               </p>
               <p className="mt-1 text-[11px] text-[var(--tokn-muted)]">
@@ -63,7 +63,7 @@ export function AssetHeader({ asset }: { asset: ScoredAsset }) {
             </>
           ) : (
             <>
-              <p className="mt-1 text-2xl tracking-wide">Not available</p>
+              <p className="mt-1 text-2xl">Not available</p>
               <p className="mt-1 text-[11px] text-[var(--tokn-muted)]">
                 No live spot price field in the API.
               </p>

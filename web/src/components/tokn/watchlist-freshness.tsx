@@ -24,7 +24,7 @@ export function WatchlistButton({ assetId }: { assetId: string }) {
         writeWatchlist(next);
         setOn(!on);
       }}
-      className="rounded-full border border-[rgba(26,28,31,0.14)] bg-white/55 px-3 py-1.5 text-[11px] tracking-[0.12em] transition hover:bg-white/80"
+      className="rounded-full border border-[rgba(26,28,31,0.14)] bg-white/55 px-3 py-1.5 text-[11px] transition hover:bg-white/80"
     >
       {on ? "★ ON WATCHLIST" : "☆ ADD TO WATCHLIST"}
     </button>

@@ -74,7 +74,7 @@ export default function HomePage() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <section className="glass p-6 sm:p-8">
           <p className="eyebrow">Tokn Investments</p>
-          <h1 className="mt-3 max-w-3xl text-3xl leading-tight tracking-wide sm:text-5xl">
+          <h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
             Investment intelligence for tokenized infrastructure.
           </h1>
           <p className="mt-4 max-w-2xl text-[13px] leading-relaxed text-[var(--tokn-muted)]">
@@ -109,7 +109,7 @@ export default function HomePage() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="eyebrow">Assets</p>
-              <h2 className="mt-1 text-xl tracking-wide">Browse</h2>
+              <h2 className="mt-1 text-xl">Browse</h2>
             </div>
             <p className="text-[11px] text-[var(--tokn-muted)]">
               {loading
@@ -138,7 +138,7 @@ export default function HomePage() {
 
         <section id="watchlist" className="mt-10">
           <p className="eyebrow">Watchlist</p>
-          <h2 className="mt-1 text-xl tracking-wide">Saved locally</h2>
+          <h2 className="mt-1 text-xl">Saved locally</h2>
           <p className="mt-2 text-[11px] text-[var(--tokn-muted)]">
             Stored in this browser only — not synced to a server.
           </p>
@@ -157,7 +157,7 @@ export default function HomePage() {
 
         <section id="about" className="glass mt-10 p-6">
           <p className="eyebrow">About</p>
-          <h2 className="mt-1 text-xl tracking-wide">What Tokn shows</h2>
+          <h2 className="mt-1 text-xl">What Tokn shows</h2>
           <p className="mt-3 max-w-3xl text-[12px] leading-relaxed text-[var(--tokn-muted)]">
             Tokn Investments is a read-only front end over the Agent-native DePIN
             scored-assets API. Scores come from scoring.engine; claims come from

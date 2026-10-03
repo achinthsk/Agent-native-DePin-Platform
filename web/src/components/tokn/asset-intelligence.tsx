@@ -36,7 +36,7 @@ export function AssetIntelligence({ asset }: { asset: ScoredAsset }) {
   return (
     <section id="intelligence" className="glass p-5 sm:p-6">
       <p className="eyebrow">Asset intelligence</p>
-      <h2 className="mt-1 text-xl tracking-wide">Fundamentals & economics</h2>
+      <h2 className="mt-1 text-xl">Fundamentals & economics</h2>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="glass-row p-4">
           <p className="eyebrow">Asset fundamentals</p>

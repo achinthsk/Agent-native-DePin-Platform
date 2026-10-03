@@ -24,15 +24,15 @@ export function SiteNav({
   );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[rgba(26,28,31,0.08)] bg-[rgba(243,244,246,0.72)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/40 bg-[rgba(236,240,245,0.55)] backdrop-blur-2xl">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="shrink-0 text-sm tracking-[0.18em]">
-          TOKN
+        <Link href="/" className="shrink-0 text-sm font-semibold">
+          Tokn
         </Link>
-        <nav className="hidden items-center gap-4 text-[11px] tracking-[0.14em] text-[var(--tokn-muted)] md:flex">
+        <nav className="hidden items-center gap-5 text-[12px] text-[var(--tokn-muted)] md:flex">
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-[var(--tokn-ink)]">
-              {l.label.toUpperCase()}
+              {l.label}
             </Link>
           ))}
         </nav>

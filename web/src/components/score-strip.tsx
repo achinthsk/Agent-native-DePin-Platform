@@ -49,7 +49,7 @@ function AnimatedNumber({
   return (
     <span
       ref={ref}
-      className="font-mono text-2xl font-medium tabular-nums tracking-tight text-[var(--foreground)]"
+      className="font-mono text-2xl font-medium tabular-nums text-[var(--foreground)]"
     >
       {display}
     </span>
@@ -93,7 +93,7 @@ export function ScoreStrip({ scores }: { scores: Scores }) {
             transition={{ delay: i * 0.05, duration: 0.35 }}
             className="rounded-lg border border-[var(--border)] bg-white/80 px-3 py-3"
           >
-            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+            <div className="text-[10px] font-medium uppercase text-[var(--muted)]">
               {axis.label}
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
