@@ -38,3 +38,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8080 npm run dev
 ```
 
 Static export: `npm run build` → `web/out` (mounted by FastAPI when present).
+
+**Deploy note:** Render serves `web/out`. The blueprint `buildCommand` rebuilds
+the Next export on every deploy. If you change only `web/src` and skip a UI
+rebuild locally, the next Render deploy still picks up the new UI.

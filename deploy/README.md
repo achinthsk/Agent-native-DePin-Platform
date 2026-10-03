@@ -9,7 +9,11 @@ Public HTTPS hosting for the scored-assets API. Decisions and rationale:
 - REST: `/v1/assets`, `/v1/assets/{id}`, `/v1/methodology`, `POST /v1/keys`
 - MCP: Streamable HTTP at `/mcp` (not stdio)
 - Owner dashboard: `/dashboard?secret=...` (alias `/owner/dashboard`; 403 without secret)
+- Public UI: Next static export at `web/out` (mounted at `/`)
 - TLS: Render-managed on `https://<service>.onrender.com`
+
+The blueprint `buildCommand` installs Node and runs `cd web && npm ci && npm run build`
+so the live site cannot stay on a stale `web/out` after a frontend merge.
 
 ## One-time setup
 
