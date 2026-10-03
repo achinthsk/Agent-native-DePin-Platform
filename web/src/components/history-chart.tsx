@@ -62,7 +62,7 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
     const v = seriesKey === "yield" ? only.yield : only.risk;
     return (
       <div className="rounded-lg border border-dashed border-[var(--border)] bg-zinc-50/80 px-3 py-4">
-        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+        <div className="text-[10px] font-medium uppercase text-[var(--muted)]">
           Snapshot history
         </div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-700">
@@ -90,7 +90,7 @@ export function HistoryChart({ history }: { history: ScoredAsset[] }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+        <div className="text-[10px] font-medium uppercase text-[var(--muted)]">
           {seriesLabel}
         </div>
         <div className="font-mono text-[10px] text-[var(--muted)]">

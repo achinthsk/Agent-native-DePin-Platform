@@ -1,54 +1,47 @@
-# Public scores page — design direction (v2)
+# Tokn Investments — design direction
 
-## What “bklit” actually is
+## Product
 
-**Confirmed product: [Bklit UI](https://bklit.com)** (registry/docs also at
-[ui.bklit.com](https://ui.bklit.com), source
-[github.com/bklit/bklit-ui](https://github.com/bklit/bklit-ui)).
+**Tokn Investments** is an investment-intelligence and verification UI for
+tokenized infrastructure / DePIN / RWA assets.
 
-It is an **open-source charts & data-visualization component library** for
-React / shadcn — line, area, bar, sparklines, KPI “stat cards” with
-animated averages, Studio playground, etc. An older **Bklit Analytics**
-hosted SaaS was discontinued; the live product people mean by “bklit” in
-a UI context is this chart/UI library, not a guess at a similarly spelled
-name.
+Flow: **Browse assets → select → reusable asset intelligence page**.
 
-## Kokonut UI (confirmed)
+Central idea: *don’t just show what an asset says about itself — show what
+the available evidence supports.*
 
-**[KokonutUI](https://kokonutui.com)** — 100+ open-source React components
-built on **Tailwind + shadcn/ui + Motion** (`motion` / Framer Motion).
-Registry install via `@kokonutui`. Aesthetic from live demos/docs:
+## Visual reference
 
-- Neutral zinc/black surfaces, `rounded-xl` cards
-- Soft `border-neutral-200/50` + light gradient fills
-  (`from-neutral-50/80 → neutral-50`), dark variants
-- Hover border + soft shadow lift
-- `tracking-tight` sans typography (product UI, not editorial serif)
-- Stagger / fade / layout motion as first-class UX
-
-## Design direction for this page
-
-Leave the paper/ink/oxide + Newsreader register behind. Match the
-**product** feel of Kokonut cards + **Bklit** chart/KPI density.
+Attached liquid-glass mock (neutral frosted panels, fine borders, soft
+depth, technical mono). Language to preserve — not pixel-perfect layout.
 
 | Token | Choice | Why |
 | --- | --- | --- |
-| Type | **Plus Jakarta Sans** + **JetBrains Mono** | Product UI sans (Kokonut-like tracking-tight), mono for IDs/scores — not Inter, not editorial serif |
-| Ground | `#FAFAFA` → zinc-50 | Clean product canvas (Bklit/Kokonut light demos) |
-| Surface | white cards, `rounded-xl`, `border-zinc-200` | Kokonut bento/card language |
-| Accent | zinc-900 + a single emerald for proof tier | Serious tool; no purple SaaS glow |
-| Charts | shadcn Chart + Recharts (Bklit-style sparklines/KPI strip) | Keep live API series; no fake trends |
-| Motion | `motion` (motion.dev) | Count-up, chart draw-in, filter reorder — same purposeful rules as before |
+| Type | **VCR OSD Mono** (+ system mono fallback) | Technical / research feel per brief |
+| Ground | Soft gray studio gradient + faint grid | Not flat white; not purple SaaS |
+| Surface | Frosted glass (`backdrop-filter`, white/60–80, 1px border) | Reference panels |
+| Accent | Zinc ink + functional green / amber / red for status only | No neon Web3 |
+| Motion | Short fade / layout transitions (`motion`) | Presence, not noise |
 
-### Hierarchy
+## Data honesty
 
-1. Compact product masthead (name + one honest line + API links)
-2. Filter/sort bar + live asset cards (score grid + history)
-3. Findings timeline as equal-weight section
-4. Methodology pulled from API
+| Kind | Examples in this system | UI label |
+| --- | --- | --- |
+| **Live (scored now)** | Four scores recomputed on each API request (`scored_at`) | Scored |
+| **Snapshot / refreshed** | `data_pulled_at`, claims, identity, yield inputs | Snapshot |
+| **Derived snapshot** | Emission token `current_price` inside risk components (Glow) | Snapshot (registry) |
+| **Not available** | Spot market price, 24h change, market cap, volume, FDV | Not available |
 
-### Non-negotiables (unchanged from PR #13)
+No fabricated market tickers or verification events.
 
-- Data only from live `/v1/assets`, `/v1/assets/{id}`, `/v1/methodology`
-- No fabricated trend lines when &lt; 2 snapshots
-- No investment-advice language
+## Score scale
+
+Engine scores are **0–100** (higher is better on each axis). UI displays
+that scale. Liquidity axis is labeled for **contractual exit / transfer
+conditions**, not order-book depth.
+
+## Architecture
+
+- `/` — discovery grid from `GET /v1/assets`
+- `/assets/[assetId]/` — one reusable `AssetDetailPage`
+- Static export + `generateStaticParams` from `storage/` (+ live API when reachable)

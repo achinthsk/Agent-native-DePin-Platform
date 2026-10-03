@@ -95,6 +95,16 @@ def _enrich(
         "snapshot_file": scored.get("snapshot_file"),
         "data_pulled_at": snap.get("data_pulled_at"),
         "snapshot_age_days": age,
+        # Additive snapshot fields for asset-intelligence UI (scores untouched).
+        "description_text": snap.get("description_text"),
+        "source_url": snap.get("source_url"),
+        "retrieval_method": snap.get("retrieval_method"),
+        "payout_mechanism": snap.get("payout_mechanism"),
+        "yield_profile": snap.get("yield_profile"),
+        "verification": snap.get("verification"),
+        "maturity": snap.get("maturity"),
+        "liquidity": snap.get("liquidity"),
+        "exposure": snap.get("exposure"),
         "regulatory": {
             "regulatory_wrapper": regulatory.get("regulatory_wrapper"),
             "accreditation_required": regulatory.get("accreditation_required"),

@@ -44,7 +44,7 @@ export function AssetPanel({
     <motion.article layout className="surface-card overflow-hidden">
       <header className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">
             {asset.name}
           </h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-[var(--muted)]">

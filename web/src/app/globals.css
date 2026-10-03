@@ -1,82 +1,355 @@
 @import "tailwindcss";
 
-/*
-  v2 tokens — Kokonut-style neutral product UI + Bklit chart density.
-  Replaces paper/ink/oxide editorial register.
-*/
+@custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-background: #fafafa;
-  --color-foreground: #09090b;
-  --color-card: #ffffff;
-  --color-muted: #71717a;
-  --color-border: #e4e4e7;
-  --color-accent: #18181b;
-  --color-proof: #059669;
-  --color-proof-fg: #ecfdf5;
-  --color-unverified: #d97706;
-  --color-chart: #2563eb;
-  --color-danger: #dc2626;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+@font-face {
+  font-family: "VCR OSD Mono";
+  src: url("/fonts/VCR_OSD_MONO.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 :root {
-  --background: #fafafa;
-  --foreground: #09090b;
-  --card: #ffffff;
-  --muted: #71717a;
-  --border: #e4e4e7;
-  --accent: #18181b;
-  --proof: #059669;
-  --proof-fg: #ecfdf5;
-  --unverified: #d97706;
-  --chart: #2563eb;
-  --danger: #dc2626;
-  --paper: var(--background);
-  --panel: var(--card);
-  --ink: var(--foreground);
-  --rule: var(--border);
-  --oxide: var(--accent);
+  --tokn-ink: #14161a;
+  --tokn-muted: #5c6573;
+  --tokn-line: rgba(20, 22, 26, 0.1);
+  --tokn-glass: rgba(255, 255, 255, 0.38);
+  --tokn-glass-strong: rgba(255, 255, 255, 0.58);
+  --tokn-ok: #1f7a4d;
+  --tokn-warn: #a16207;
+  --tokn-bad: #b42318;
+  --tokn-pending: #5c6573;
+  --background: #d5dbe4;
+  --foreground: var(--tokn-ink);
+  --radius: 1.5rem;
+  --chart: #1f2937;
+  --font-sans: var(--font-tokn-sans), "Segoe UI", system-ui, sans-serif;
+  --font-mono: "VCR OSD Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-@layer base {
-  * {
-    border-color: var(--border);
-  }
-  html {
-    scroll-behavior: smooth;
-  }
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection {
-    background: color-mix(in srgb, var(--chart) 22%, transparent);
-  }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-tokn-sans), "Segoe UI", system-ui, sans-serif;
+  --font-mono: "VCR OSD Mono", ui-monospace, Menlo, monospace;
+  --radius-lg: var(--radius);
 }
 
-/* Kokonut-like surface */
-@layer utilities {
-  .surface-card {
-    border-radius: 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--card) 92%, #f4f4f5),
-      var(--card)
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--tokn-ink);
+  font-family: var(--font-sans);
+  font-weight: 450;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(980px 560px at 8% -12%, rgba(255, 255, 255, 0.98), transparent 58%),
+    radial-gradient(760px 460px at 92% 6%, rgba(148, 170, 196, 0.72), transparent 55%),
+    radial-gradient(640px 420px at 48% 108%, rgba(210, 222, 236, 0.75), transparent 58%),
+    radial-gradient(420px 280px at 70% 40%, rgba(180, 198, 220, 0.35), transparent 70%),
+    linear-gradient(165deg, #e8eef5 0%, #cfd8e4 46%, #b9c5d4 100%);
+  background-attachment: fixed;
+}
+
+/* Soft studio depth + faint grid under glass */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(20, 22, 26, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 22, 26, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 40% 18%, black 18%, transparent 72%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.tokn-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/*
+ * Formal, uniform type:
+ * - Body/headings always use Plus Jakarta Sans with letter-spacing: 0
+ * - Never apply wide tracking to prose or titles (fixes “intelligence” spacing)
+ * - Mono reserved for tiny technical labels only
+ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+button,
+input,
+label,
+span,
+a {
+  letter-spacing: 0;
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+
+h1 {
+  letter-spacing: -0.02em;
+  font-kerning: normal;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+h2,
+h3 {
+  letter-spacing: -0.01em;
+  font-kerning: normal;
+}
+
+/* Liquid glass panel — frosted, specular, soft depth
+ * Use @apply for backdrop-* so Tailwind v4 emits a real backdrop-filter
+ * (raw backdrop-filter declarations are stripped from custom CSS). */
+.glass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.44) 0%,
+      rgba(255, 255, 255, 0.22) 42%,
+      rgba(255, 255, 255, 0.12) 78%,
+      rgba(255, 255, 255, 0.08) 100%
     );
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
-  }
-  .surface-card:hover {
-    border-color: color-mix(in srgb, var(--foreground) 18%, var(--border));
-    box-shadow:
-      0 8px 24px rgb(0 0 0 / 0.06),
-      0 1px 2px rgb(0 0 0 / 0.04);
-  }
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -18px 36px rgba(255, 255, 255, 0.1) inset,
+    0 18px 40px rgba(20, 22, 26, 0.08),
+    0 4px 12px rgba(20, 22, 26, 0.04);
+  @apply backdrop-blur-[36px] backdrop-saturate-150;
+}
+
+/* Specular highlight = liquid gloss across the top edge */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 44%;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0) 8%,
+      rgba(255, 255, 255, 0.45) 32%,
+      rgba(255, 255, 255, 0.72) 48%,
+      rgba(255, 255, 255, 0.28) 64%,
+      rgba(255, 255, 255, 0) 92%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.12) 55%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  opacity: 0.85;
+  z-index: 0;
+  mix-blend-mode: soft-light;
+}
+
+/* Soft inner rim for glass edge definition */
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    inset 0 12px 28px rgba(255, 255, 255, 0.12);
+  z-index: 0;
+}
+
+.glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-strong {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(255, 255, 255, 0.58) 48%,
+      rgba(255, 255, 255, 0.36) 100%
+    );
+}
+
+.glass-row {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.48) 0%,
+      rgba(255, 255, 255, 0.2) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 1.1rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 22px rgba(20, 22, 26, 0.045);
+  @apply backdrop-blur-[22px] backdrop-saturate-150;
+}
+
+.glass-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 50%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.62),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.glass-inset {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.14) 100%
+    );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 6px 14px rgba(20, 22, 26, 0.035);
+  @apply backdrop-blur-[18px] backdrop-saturate-150;
+  padding: 0.75rem 0.85rem 0.65rem;
+}
+
+.glass-inset::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tokn-muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.36);
+  padding: 0.18rem 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  @apply backdrop-blur-md;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.pill-ok {
+  color: var(--tokn-ok);
+  border-color: rgba(31, 122, 77, 0.22);
+  background: rgba(31, 122, 77, 0.1);
+}
+
+.pill-warn {
+  color: var(--tokn-warn);
+  border-color: rgba(161, 98, 7, 0.25);
+  background: rgba(161, 98, 7, 0.1);
+}
+
+.pill-bad {
+  color: var(--tokn-bad);
+  border-color: rgba(180, 35, 24, 0.25);
+  background: rgba(180, 35, 24, 0.09);
+}
+
+.pill-muted {
+  color: var(--tokn-pending);
+}
+
+.score-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(20, 22, 26, 0.08);
+  overflow: hidden;
+}
+
+.score-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(20, 22, 26, 0.5);
+}
+
+.score-bar[data-tone="high"] > span {
+  background: rgba(31, 122, 77, 0.75);
+}
+.score-bar[data-tone="mid"] > span {
+  background: rgba(161, 98, 7, 0.7);
+}
+.score-bar[data-tone="low"] > span {
+  background: rgba(180, 35, 24, 0.65);
+}
+.score-bar[data-tone="missing"] > span {
+  background: rgba(107, 114, 128, 0.45);
+  width: 0 !important;
+}
+
+.mono-num {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
