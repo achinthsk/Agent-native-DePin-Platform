@@ -14,6 +14,7 @@ Usage:
   python3 scheduler/run_discovery.py --trigger manual
   python3 scheduler/run_discovery.py --trigger manual --candidate-name "Tokenized farmland"
   python3 scheduler/run_discovery.py --dry-run
+  python3 scheduler/run_discovery.py --candidate-name AgriFi --skip-research
 """
 
 from __future__ import annotations
@@ -502,6 +503,14 @@ def main() -> int:
         action="store_true",
         help="Investigate but do not write FINDINGS / advance backlog",
     )
+    parser.add_argument(
+        "--skip-research",
+        action="store_true",
+        help=(
+            "Do not auto-run the adapter-spec research agent when "
+            "classification is candidate-for-adapter."
+        ),
+    )
     args = parser.parse_args()
 
     assert_scheduler_safe()
@@ -576,6 +585,26 @@ def main() -> int:
             )
 
         details["findings_path"] = str(findings_path.relative_to(REPO_ROOT))
+
+        # Deeper research pass — only for candidate-for-adapter; additive
+        # ADAPTER_SPEC.md; never auto-approves adapter work.
+        if (
+            result["classification"] == "candidate-for-adapter"
+            and not args.skip_research
+        ):
+            from scheduler.run_research_agent import research_candidate, write_spec
+
+            research = research_candidate(candidate, require_findings=True)
+            spec_path = write_spec(research)
+            details["adapter_spec_path"] = str(spec_path.relative_to(REPO_ROOT))
+            details["research_reachable_count"] = sum(
+                1 for e in research["evidence"] if e["ok"]
+            )
+            print(f"Wrote {spec_path} (research agent; human review still required)")
+        elif result["classification"] == "candidate-for-adapter":
+            details["adapter_spec_path"] = None
+            details["research_skipped"] = True
+            print("Research agent skipped (--skip-research)")
 
         append_status(
             job="discovery",
