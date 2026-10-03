@@ -9,7 +9,19 @@ services:
     region: oregon
     # Deploy from the branch you connect in the Render UI (e.g. main after merge,
     # or cursor/public-https-deploy-c7dd while reviewing).
-    buildCommand: pip install -r requirements.txt
+    #
+    # UI is the Next static export at web/out, mounted by FastAPI.
+    # Rebuild it here so source-only web/src merges cannot leave the live site
+    # on a stale UI. Node is installed via the official Linux binary tarball
+    # (no apt/sudo required on Render's Python runtime).
+    buildCommand: |
+      pip install -r requirements.txt
+      NODE_VERSION=20.18.1
+      curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" -o /tmp/node.tar.xz
+      mkdir -p "$HOME/.local"
+      tar -xJf /tmp/node.tar.xz -C "$HOME/.local"
+      export PATH="$HOME/.local/node-v${NODE_VERSION}-linux-x64/bin:$PATH"
+      cd web && npm ci && npm run build
     startCommand: python3 -m uvicorn api.public_app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
@@ -23,3 +35,6 @@ services:
         sync: false
       - key: ALLOWED_HOSTS
         sync: false
+      # Empty base = same-origin API calls from the static UI on *.onrender.com
+      - key: NEXT_PUBLIC_API_BASE
+        value: ""
