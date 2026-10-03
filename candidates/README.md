@@ -8,11 +8,12 @@ by the API.
 ## Hard rules
 
 1. **Investigation only.** Work under `candidates/` produces FINDINGS documents
+   (and, when classified `candidate-for-adapter`, an additive `ADAPTER_SPEC.md`)
    for human review. It does **not** add adapters, schema fields, storage
    snapshots, scoring weights, or API routes.
 2. **No adapter code in this phase** — even if the classification is
-   `candidate-for-adapter`. Building an adapter is a separate,
-   human-initiated task after an explicit greenlight.
+   `candidate-for-adapter` and an `ADAPTER_SPEC.md` exists. Building an adapter
+   is a separate, human-initiated task after an explicit greenlight of the spec.
 3. **Same evidence standard as `adapters/FINDINGS.md`:** cite real URLs,
    contract addresses, and reachable endpoints; state what was checked; use an
    explicit “what’s actually reachable right now” table; never fabricate or
@@ -20,6 +21,17 @@ by the API.
 4. **One of four classifications, stated at the top** of every
    `candidates/<name>/FINDINGS.md` (see below).
 
+## Adapter-spec research (additive)
+
+For candidates already classified **`candidate-for-adapter`**,
+`scheduler/run_research_agent.py` runs a deeper research pass and writes
+`candidates/<slug>/ADAPTER_SPEC.md` without modifying FINDINGS.md.
+
+- Triggered automatically at the end of `run_discovery.py` when the verdict is
+  `candidate-for-adapter` (disable with `--skip-research`).
+- Can also be run alone: `python3 scheduler/run_research_agent.py --candidate-name AgriFi`
+- Output is a document only — **nothing is auto-approved**; a human still
+  decides whether to greenlight bespoke adapter work.
 ## The four classifications
 
 | Classification | Meaning |
@@ -65,6 +77,7 @@ by the API.
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| AgriFi | `candidate-for-adapter` | 2026-10-03 | [`agrifi/FINDINGS.md`](./agrifi/FINDINGS.md) · [`ADAPTER_SPEC.md`](./agrifi/ADAPTER_SPEC.md) |
 | PTX | `candidate-for-adapter` | 2026-09-11 | [`ptx/FINDINGS.md`](./ptx/FINDINGS.md) |
 | Mining royalty tokenization (category) | `insufficient-information` | 2026-08-21 | [`mining-royalty-tokenization/FINDINGS.md`](./mining-royalty-tokenization/FINDINGS.md) |
 | Tokenized farmland (category) | `insufficient-information` | 2026-08-21 | [`tokenized-farmland/FINDINGS.md`](./tokenized-farmland/FINDINGS.md) |

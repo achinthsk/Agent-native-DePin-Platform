@@ -5,6 +5,9 @@ Automates two previously manual workflows:
 1. **Refresh** — re-pull Glow + RealT into new timestamped `storage/` snapshots
 2. **Discovery** — investigate **one** backlog candidate per cycle into
    `candidates/<slug>/FINDINGS.md`
+3. **Research (additive)** — when discovery classifies `candidate-for-adapter`,
+   `run_research_agent.py` writes `candidates/<slug>/ADAPTER_SPEC.md` for human
+   review (no adapter code; nothing auto-approved)
 
 Elmnts stays manual. Nothing under `execution/` is imported or invoked.
 Nothing is auto-merged — GitHub Actions opens a PR for a human.
@@ -20,8 +23,10 @@ python3 scheduler/run_refresh.py --break-gca   # deliberate loud Glow failure
 python3 scheduler/run_discovery.py
 python3 scheduler/run_discovery.py --candidate-name "Decen Space"
 python3 scheduler/run_discovery.py --dry-run
+python3 scheduler/run_discovery.py --candidate-name AgriFi --skip-research
+python3 scheduler/run_research_agent.py --candidate-name AgriFi
+python3 scheduler/run_research_agent.py --candidate-name AgriFi --dry-run
 ```
-
 ## Status log
 
 Every run appends one JSON line to `scheduler/status/status_log.jsonl`
