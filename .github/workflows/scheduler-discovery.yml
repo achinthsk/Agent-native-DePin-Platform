@@ -99,6 +99,7 @@ jobs:
           DISPLAY_NAME="unknown"
           CLASSIFICATION="unknown"
           FINDINGS_PATH=""
+          SPEC_PATH=""
           REACHABLE="?"
           CHECKED="?"
           if [ -s scheduler/status/status_log.jsonl ]; then
@@ -106,6 +107,7 @@ jobs:
             DISPLAY_NAME=$(echo "$LAST_LINE" | jq -r '.details.display_name // .details.candidate // "unknown"')
             CLASSIFICATION=$(echo "$LAST_LINE" | jq -r '.details.classification // "unknown"')
             FINDINGS_PATH=$(echo "$LAST_LINE" | jq -r '.details.findings_path // ""')
+            SPEC_PATH=$(echo "$LAST_LINE" | jq -r '.details.adapter_spec_path // ""')
             REACHABLE=$(echo "$LAST_LINE" | jq -r '.details.reachable_count // "?"')
             CHECKED=$(echo "$LAST_LINE" | jq -r '(.details.evidence // []) | length')
           fi
@@ -114,6 +116,10 @@ jobs:
           **Classification: \`${CLASSIFICATION}\`**
           Sources checked: ${REACHABLE}/${CHECKED} reachable
           Full findings: \`${FINDINGS_PATH}\`"
+          if [ -n "${SPEC_PATH}" ] && [ "${SPEC_PATH}" != "null" ]; then
+            RESULTS_BLOCK="${RESULTS_BLOCK}
+          Adapter spec (research only): \`${SPEC_PATH}\` — human greenlight still required before any adapter work."
+          fi
 
           if [ "${{ steps.discovery.outcome }}" = "success" ]; then
             if [ -n "${CANDIDATE_NAME:-}" ]; then
