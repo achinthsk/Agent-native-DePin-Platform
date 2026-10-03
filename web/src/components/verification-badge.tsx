@@ -33,7 +33,7 @@ export function VerificationBadge({ tier }: { tier: string | null }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercaser",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercase",
         meta.tone === "proof" &&
           "border-emerald-200 bg-emerald-50 text-emerald-800",
         meta.tone === "unverified" &&

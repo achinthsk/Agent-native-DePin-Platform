@@ -284,9 +284,7 @@ function ChartBlock({
         <p className="mt-2 text-[10px] leading-relaxed text-[var(--tokn-muted)]">
           {subtitle}
         </p>
-      ) : (
-        <p className="mt-1 text-[10px] text-[var(--tokn-muted)]">{subtitle}</p>
-      )}
+      ) : null}
     </div>
   );
 }

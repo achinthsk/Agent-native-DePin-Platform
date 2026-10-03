@@ -43,7 +43,15 @@ function MiniScore({
   );
 }
 
-export function AssetCard({ asset, index = 0 }: { asset: ScoredAsset; index?: number }) {
+export function AssetCard({
+  asset,
+  index = 0,
+  history = [],
+}: {
+  asset: ScoredAsset;
+  index?: number;
+  history?: ScoredAsset[];
+}) {
   const symbol = tokenSymbol(asset);
   const state = overallVerificationState(asset);
   const fresh = snapshotFreshness(asset);
@@ -82,7 +90,7 @@ export function AssetCard({ asset, index = 0 }: { asset: ScoredAsset; index?: nu
       </div>
 
       <div className="glass-inset mt-4">
-        <AssetSeriesChart asset={asset} compact />
+        <AssetSeriesChart asset={asset} history={history} compact />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">

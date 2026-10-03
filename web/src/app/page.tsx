@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AssetCard } from "@/components/tokn/asset-card";
 import { SiteNav } from "@/components/tokn/site-nav";
 import {
+  fetchAssetHistory,
   fetchAssets,
   GITHUB_REPO,
   LIVE_API_FALLBACK,
@@ -15,6 +16,7 @@ import { readWatchlist } from "@/lib/asset-helpers";
 export default function HomePage() {
   const [apiBase] = useState(() => resolveApiBase());
   const [assets, setAssets] = useState<ScoredAsset[]>([]);
+  const [histories, setHistories] = useState<Record<string, ScoredAsset[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,10 +33,22 @@ export default function HomePage() {
     let cancelled = false;
     setLoading(true);
     fetchAssets(apiBase)
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return;
         setAssets(res.assets);
         setError(null);
+        const entries = await Promise.all(
+          res.assets.map(async (a) => {
+            try {
+              const hist = await fetchAssetHistory(a.asset_id, apiBase);
+              return [a.asset_id, hist] as const;
+            } catch {
+              return [a.asset_id, [a] as ScoredAsset[]] as const;
+            }
+          }),
+        );
+        if (cancelled) return;
+        setHistories(Object.fromEntries(entries));
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -109,7 +123,7 @@ export default function HomePage() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="eyebrow">Assets</p>
-              <h2 className="mt-1 text-xl">Browse</h2>
+              <h2 className="mt-1 text-xl font-semibold">Browse</h2>
             </div>
             <p className="text-[11px] text-[var(--tokn-muted)]">
               {loading
@@ -126,7 +140,12 @@ export default function HomePage() {
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((asset, i) => (
-              <AssetCard key={asset.asset_id} asset={asset} index={i} />
+              <AssetCard
+                key={asset.asset_id}
+                asset={asset}
+                index={i}
+                history={histories[asset.asset_id] || []}
+              />
             ))}
           </div>
           {!loading && !error && filtered.length === 0 ? (
@@ -138,7 +157,7 @@ export default function HomePage() {
 
         <section id="watchlist" className="mt-10">
           <p className="eyebrow">Watchlist</p>
-          <h2 className="mt-1 text-xl">Saved locally</h2>
+          <h2 className="mt-1 text-xl font-semibold">Saved locally</h2>
           <p className="mt-2 text-[11px] text-[var(--tokn-muted)]">
             Stored in this browser only — not synced to a server.
           </p>
@@ -149,7 +168,12 @@ export default function HomePage() {
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {watched.map((asset, i) => (
-                <AssetCard key={asset.asset_id} asset={asset} index={i} />
+                <AssetCard
+                  key={asset.asset_id}
+                  asset={asset}
+                  index={i}
+                  history={histories[asset.asset_id] || []}
+                />
               ))}
             </div>
           )}
@@ -157,7 +181,7 @@ export default function HomePage() {
 
         <section id="about" className="glass mt-10 p-6">
           <p className="eyebrow">About</p>
-          <h2 className="mt-1 text-xl">What Tokn shows</h2>
+          <h2 className="mt-1 text-xl font-semibold">What Tokn shows</h2>
           <p className="mt-3 max-w-3xl text-[12px] leading-relaxed text-[var(--tokn-muted)]">
             Tokn Investments is a read-only front end over the Agent-native DePIN
             scored-assets API. Scores come from scoring.engine; claims come from
