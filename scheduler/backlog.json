@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One named candidate per scheduled cycle \u2014 not bare categories.",
-  "next_index": 5,
+  "next_index": 6,
   "candidates": [
     {
       "slug": "spacecoin",
