@@ -8,7 +8,8 @@
     "real_estate",
     "real_estate",
     "mining",
-    "other_physical_rwa"
+    "other_physical_rwa",
+    "farmland"
   ],
   "candidates": {
     "aethir": {
@@ -229,6 +230,23 @@
       "has_adapter_spec": false,
       "investigated": true,
       "physical_class": "physical-rwa",
+      "discovery_source": "ranked_pool"
+    },
+    "agro-digital-token": {
+      "slug": "agro-digital-token",
+      "display_name": "Agro Digital Token",
+      "category": "farmland",
+      "domains": [
+        "myagro.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "unclear",
       "discovery_source": "ranked_pool"
     }
   }
