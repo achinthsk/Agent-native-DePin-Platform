@@ -7,7 +7,8 @@
     "other_physical_rwa",
     "real_estate",
     "real_estate",
-    "mining"
+    "mining",
+    "other_physical_rwa"
   ],
   "candidates": {
     "aethir": {
@@ -210,6 +211,24 @@
       "has_adapter_spec": false,
       "investigated": true,
       "physical_class": "unclear",
+      "discovery_source": "ranked_pool"
+    },
+    "toucan-protocol": {
+      "slug": "toucan-protocol",
+      "display_name": "Toucan Protocol",
+      "category": "other_physical_rwa",
+      "domains": [
+        "docs.toucan.earth",
+        "toucan.earth"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
     }
   }

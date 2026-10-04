@@ -157,6 +157,18 @@
       "notes": "Mining / mineral-rights adjacent tokenization project",
       "category": "mining",
       "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "toucan-protocol",
+      "display_name": "Toucan Protocol",
+      "seeds": [
+        "https://toucan.earth/",
+        "https://docs.toucan.earth/",
+        "https://toucan.earth/carbon-bridge"
+      ],
+      "notes": "On-chain carbon credit / environmental asset bridging \u2014 physical-world credit exposure",
+      "category": "other_physical_rwa",
+      "discovery_source": "seed_catalog"
     }
   ]
 }
