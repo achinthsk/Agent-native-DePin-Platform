@@ -91,16 +91,25 @@ replacements follow.
 | 6 | `agrifi` | **AgriFi** (farmland / ag RWA) | Queued — named replacement for farmland category |
 | 7 | `agro-digital-token` | **Agro Digital Token** (plantation RWA) | Queued — second named farmland candidate |
 
-Pointer state lives in `scheduler/backlog.json` (`next_index`). Only
-**backlog-order** runs (scheduled cron, or manual with empty
-`candidate_name`) advance it by one on success. A named on-demand
-override never advances the pointer — even if the name happens to match
-the next backlog item — so an ad-hoc check cannot silently skip queue
-order. Re-runs after the list is exhausted fail loudly and log
-`backlog_exhausted`.
+### Pointer vs durable state (learned 2026-10-04)
 
-Current `next_index` after the category closures: **4** (next scheduled /
-empty-manual run = **PTX**).
+**Root cause of AgriFi loops:** scheduled discovery PRs advanced
+`next_index` only on the PR branch. Those PRs were left open/unmerged, so
+`main` kept `next_index = 5` (AgriFi). AgriFi already had `FINDINGS.md` on
+`main`, but selection never checked the filesystem — every fresh checkout
+rediscovered AgriFi.
+
+**Fix:** `scheduler/candidate_state.json` is synced from
+`candidates/*/FINDINGS.md` (+ adapter readiness / live storage) on every
+run. Anything already investigated is skipped. Selection ranks a
+replenishable `discovery_pool.json` (seeded by
+`discovery_catalog.py`) with a physical-RWA gate and category diversity.
+`next_index` remains compatibility metadata and is moved to the first
+still-uninvestigated backlog row — it is no longer the sole source of
+truth.
+
+Only **automatic** runs advance the pointer metadata. A named on-demand
+override never advances it, and already-investigated names are refused.
 
 ---
 

@@ -1,0 +1,212 @@
+{
+  "description": "Replenishable physical-RWA discovery pool",
+  "candidates": [
+    {
+      "slug": "agro-digital-token",
+      "display_name": "Agro Digital Token",
+      "category": "farmland",
+      "seeds": [
+        "https://www.myagro.io/",
+        "https://www.myagro.io/#tokenomics",
+        "https://www.myagro.io/#rwa"
+      ],
+      "notes": "Named plantation / farmland RWA token (AGRO)",
+      "aliases": [
+        "myagro",
+        "agro"
+      ],
+      "domains": [
+        "myagro.io"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "lofty",
+      "display_name": "Lofty",
+      "category": "real_estate",
+      "seeds": [
+        "https://www.lofty.ai/",
+        "https://www.lofty.ai/marketplace",
+        "https://docs.lofty.ai/"
+      ],
+      "notes": "Fractional real-estate property tokens",
+      "aliases": [
+        "lofty.ai",
+        "lofty ai"
+      ],
+      "domains": [
+        "lofty.ai",
+        "docs.lofty.ai"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "landshare",
+      "display_name": "Landshare",
+      "category": "farmland",
+      "seeds": [
+        "https://landshare.io/",
+        "https://docs.landshare.io/",
+        "https://landshare.io/rwa/"
+      ],
+      "notes": "Tokenized real-world farmland / property yield product",
+      "aliases": [
+        "land share"
+      ],
+      "domains": [
+        "landshare.io",
+        "docs.landshare.io"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "blocksquare",
+      "display_name": "Blocksquare",
+      "category": "real_estate",
+      "seeds": [
+        "https://blocksquare.io/",
+        "https://docs.blocksquare.io/",
+        "https://blocksquare.io/tokenize/"
+      ],
+      "notes": "Real-estate tokenization protocol / property exposure",
+      "aliases": [
+        "bst"
+      ],
+      "domains": [
+        "blocksquare.io",
+        "docs.blocksquare.io"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "realio",
+      "display_name": "Realio Network",
+      "category": "real_estate",
+      "seeds": [
+        "https://realio.network/",
+        "https://docs.realio.network/",
+        "https://realio.network/ecosystem"
+      ],
+      "notes": "Real-world asset issuance network focused on real estate / alternatives",
+      "aliases": [
+        "realio-network",
+        "rio"
+      ],
+      "domains": [
+        "realio.network",
+        "docs.realio.network"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "tangible",
+      "display_name": "Tangible",
+      "category": "other_physical_rwa",
+      "seeds": [
+        "https://www.tangible.store/",
+        "https://docs.tangible.store/",
+        "https://www.tangible.store/marketplace"
+      ],
+      "notes": "Tokenized physical luxury / real-world asset marketplace",
+      "aliases": [
+        "tnbl"
+      ],
+      "domains": [
+        "tangible.store",
+        "docs.tangible.store"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "energy-web",
+      "display_name": "Energy Web",
+      "category": "energy",
+      "seeds": [
+        "https://www.energyweb.org/",
+        "https://docs.energyweb.org/",
+        "https://www.energyweb.org/technology"
+      ],
+      "notes": "Energy infrastructure decentralization \u2014 may be utility/DePIN not asset claim; investigate carefully",
+      "aliases": [
+        "ewt",
+        "energyweb"
+      ],
+      "domains": [
+        "energyweb.org",
+        "docs.energyweb.org"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "toucan-protocol",
+      "display_name": "Toucan Protocol",
+      "category": "other_physical_rwa",
+      "seeds": [
+        "https://toucan.earth/",
+        "https://docs.toucan.earth/",
+        "https://toucan.earth/carbon-bridge"
+      ],
+      "notes": "On-chain carbon credit / environmental asset bridging \u2014 physical-world credit exposure",
+      "aliases": [
+        "toucan",
+        "tco2"
+      ],
+      "domains": [
+        "toucan.earth",
+        "docs.toucan.earth"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "mineralized",
+      "display_name": "Mineralized",
+      "category": "mining",
+      "seeds": [
+        "https://mineralized.io/",
+        "https://mineralized.io/#how-it-works"
+      ],
+      "notes": "Mining / mineral-rights adjacent tokenization project",
+      "aliases": [],
+      "domains": [
+        "mineralized.io"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "digishares",
+      "display_name": "DigiShares",
+      "category": "real_estate",
+      "seeds": [
+        "https://www.digishares.io/",
+        "https://www.digishares.io/platform"
+      ],
+      "notes": "Real-estate / alternative-asset tokenization platform",
+      "aliases": [],
+      "domains": [
+        "digishares.io"
+      ],
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "parcl",
+      "display_name": "Parcl",
+      "category": "real_estate",
+      "seeds": [
+        "https://www.parcl.co/",
+        "https://docs.parcl.co/",
+        "https://app.parcl.co/"
+      ],
+      "notes": "Real-estate price exposure / property market synthetic \u2014 verify physical-asset claim carefully",
+      "aliases": [
+        "prcl"
+      ],
+      "domains": [
+        "parcl.co",
+        "docs.parcl.co",
+        "app.parcl.co"
+      ],
+      "discovery_source": "seed_catalog"
+    }
+  ],
+  "uninvestigated_count": 5
+}
