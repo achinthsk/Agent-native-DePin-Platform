@@ -2,7 +2,7 @@
 
 **Classification: `candidate-for-adapter`**
 
-**Date investigated:** 2026-10-03
+**Date investigated:** 2026-10-04
 **Investigator note:** Scheduler discovery cycle (`scheduler/run_discovery.py`).
 Research log only. No adapter, schema, scoring, storage, or API changes
 accompany this document beyond this FINDINGS file and the candidates index
