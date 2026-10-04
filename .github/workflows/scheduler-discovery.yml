@@ -85,6 +85,7 @@ jobs:
           git checkout -b "$BRANCH"
 
           git add scheduler/status/status_log.jsonl scheduler/backlog.json \
+            scheduler/candidate_state.json scheduler/discovery_pool.json \
             candidates/ || true
 
           if git diff --cached --quiet; then

@@ -1,0 +1,216 @@
+{
+  "description": "Durable discovery candidate state. Synced from candidates/*/ and storage/ on every discovery run so unmerged pointer advances cannot re-select already-investigated assets.",
+  "updated_at": "2026-10-04",
+  "recent_categories": [
+    "energy",
+    "farmland",
+    "other_physical_rwa",
+    "real_estate",
+    "real_estate",
+    "mining"
+  ],
+  "candidates": {
+    "aethir": {
+      "slug": "aethir",
+      "display_name": "aethir",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "wrong-model",
+      "state": "rejected",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "agrifi": {
+      "slug": "agrifi",
+      "display_name": "agrifi",
+      "category": "farmland",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "adapter_readiness": "token-data-only",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true
+    },
+    "decentralized-space": {
+      "slug": "decentralized-space",
+      "display_name": "decentralized-space",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "not-yet-investable",
+      "state": "rejected",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "energy-web": {
+      "slug": "energy-web",
+      "display_name": "energy-web",
+      "category": "energy",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "landshare": {
+      "slug": "landshare",
+      "display_name": "landshare",
+      "category": "farmland",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "lofty": {
+      "slug": "lofty",
+      "display_name": "lofty",
+      "category": "real_estate",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "mining-royalty-tokenization": {
+      "slug": "mining-royalty-tokenization",
+      "display_name": "mining-royalty-tokenization",
+      "category": "mining",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "ptx": {
+      "slug": "ptx",
+      "display_name": "ptx",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "adapter_readiness": "blocked",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true
+    },
+    "spacecoin": {
+      "slug": "spacecoin",
+      "display_name": "spacecoin",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "wrong-model",
+      "state": "rejected",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "tangible": {
+      "slug": "tangible",
+      "display_name": "tangible",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "adapter_readiness": "token-data-only"
+    },
+    "tokenized-farmland": {
+      "slug": "tokenized-farmland",
+      "display_name": "tokenized-farmland",
+      "category": "farmland",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true
+    },
+    "elmnts": {
+      "slug": "elmnts",
+      "display_name": "elmnts",
+      "state": "live",
+      "live_asset_id": "elmnts-chevron-mineral-rights-fund-public-marketing",
+      "investigated": true
+    },
+    "glow-protocol": {
+      "slug": "glow-protocol",
+      "display_name": "glow-protocol",
+      "state": "live",
+      "live_asset_id": "glow-farm-1",
+      "investigated": true
+    },
+    "realt-platform": {
+      "slug": "realt-platform",
+      "display_name": "realt-platform",
+      "state": "live",
+      "live_asset_id": "realt-0xfe17c3c0b6f38cf3bd8ba872bee7a18ab16b43fb",
+      "investigated": true
+    },
+    "blocksquare": {
+      "slug": "blocksquare",
+      "display_name": "Blocksquare",
+      "category": "real_estate",
+      "domains": [
+        "blocksquare.io",
+        "docs.blocksquare.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "ranked_pool"
+    },
+    "mineralized": {
+      "slug": "mineralized",
+      "display_name": "Mineralized",
+      "category": "mining",
+      "domains": [
+        "mineralized.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "unclear",
+      "discovery_source": "ranked_pool"
+    }
+  }
+}

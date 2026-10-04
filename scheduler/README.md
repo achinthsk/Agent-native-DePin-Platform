@@ -3,11 +3,15 @@
 Automates two previously manual workflows:
 
 1. **Refresh** — re-pull Glow + RealT into new timestamped `storage/` snapshots
-2. **Discovery** — investigate **one** backlog candidate per cycle into
-   `candidates/<slug>/FINDINGS.md`
-3. **Research (additive)** — when discovery classifies `candidate-for-adapter`,
-   `run_research_agent.py` writes `candidates/<slug>/ADAPTER_SPEC.md` for human
-   review (no adapter code; nothing auto-approved)
+2. **Discovery** — investigate **one new physical-RWA candidate** per cycle into
+   `candidates/<slug>/FINDINGS.md`. Selection uses a replenishable pool +
+   durable `candidate_state.json`, skips already-investigated slugs (even when
+   `next_index` is stale), applies a physical-asset relevance gate, dedupes by
+   name/domain/address (never ticker-alone), and ranks for category diversity.
+3. **Research (additive)** — when discovery classifies `candidate-for-adapter`
+   *and* the physical gate is `physical-rwa`, `run_research_agent.py` writes
+   `candidates/<slug>/ADAPTER_SPEC.md` for human review (no adapter code;
+   nothing auto-approved)
 
 Elmnts stays manual. Nothing under `execution/` is imported or invoked.
 Nothing is auto-merged — GitHub Actions opens a PR for a human.

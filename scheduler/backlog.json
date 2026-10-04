@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One named candidate per scheduled cycle \u2014 not bare categories.",
-  "next_index": 5,
+  "next_index": 6,
   "candidates": [
     {
       "slug": "spacecoin",
@@ -86,6 +86,77 @@
         "https://www.myagro.io/#rwa"
       ],
       "notes": "Named plantation / farmland RWA token (AGRO) \u2014 second named farmland candidate after AgriFi"
+    },
+    {
+      "slug": "lofty",
+      "display_name": "Lofty",
+      "seeds": [
+        "https://www.lofty.ai/",
+        "https://www.lofty.ai/marketplace",
+        "https://docs.lofty.ai/"
+      ],
+      "notes": "Fractional real-estate property tokens",
+      "category": "real_estate",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "energy-web",
+      "display_name": "Energy Web",
+      "seeds": [
+        "https://www.energyweb.org/",
+        "https://docs.energyweb.org/",
+        "https://www.energyweb.org/technology"
+      ],
+      "notes": "Energy infrastructure decentralization \u2014 may be utility/DePIN not asset claim; investigate carefully",
+      "category": "energy",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "landshare",
+      "display_name": "Landshare",
+      "seeds": [
+        "https://landshare.io/",
+        "https://docs.landshare.io/",
+        "https://landshare.io/rwa/"
+      ],
+      "notes": "Tokenized real-world farmland / property yield product",
+      "category": "farmland",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "tangible",
+      "display_name": "Tangible",
+      "seeds": [
+        "https://www.tangible.store/",
+        "https://docs.tangible.store/",
+        "https://www.tangible.store/marketplace"
+      ],
+      "notes": "Tokenized physical luxury / real-world asset marketplace",
+      "category": "other_physical_rwa",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "blocksquare",
+      "display_name": "Blocksquare",
+      "seeds": [
+        "https://blocksquare.io/",
+        "https://docs.blocksquare.io/",
+        "https://blocksquare.io/tokenize/"
+      ],
+      "notes": "Real-estate tokenization protocol / property exposure",
+      "category": "real_estate",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "mineralized",
+      "display_name": "Mineralized",
+      "seeds": [
+        "https://mineralized.io/",
+        "https://mineralized.io/#how-it-works"
+      ],
+      "notes": "Mining / mineral-rights adjacent tokenization project",
+      "category": "mining",
+      "discovery_source": "seed_catalog"
     }
   ]
 }

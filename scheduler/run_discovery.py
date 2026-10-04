@@ -2,17 +2,17 @@
 """
 One-candidate discovery cycle for the scheduler.
 
-Default: next entry from scheduler/backlog.json.
-Override: --candidate-name investigates that platform immediately
-(need not already be on the backlog). Same investigation process either
-way — seed fetch + FINDINGS.md + README index; PR-only, no auto-merge.
+Default: select the best *new* physical-RWA candidate from the replenishable
+pool + backlog, skipping anything already investigated (FINDINGS.md / durable
+candidate state). Override: --candidate-name investigates that platform
+immediately unless it was already researched.
 
-Never touches execution/. Never refreshes Elmnts.
+Never touches execution/. Never refreshes Elmnts. Never auto-merges.
 
 Usage:
   python3 scheduler/run_discovery.py --trigger scheduled
   python3 scheduler/run_discovery.py --trigger manual
-  python3 scheduler/run_discovery.py --trigger manual --candidate-name "Tokenized farmland"
+  python3 scheduler/run_discovery.py --trigger manual --candidate-name "Lofty"
   python3 scheduler/run_discovery.py --dry-run
   python3 scheduler/run_discovery.py --candidate-name AgriFi --skip-research
 """
@@ -34,6 +34,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from scheduler._guards import assert_scheduler_safe
+from scheduler.candidate_state import (
+    mark_investigated,
+    save_state,
+    sync_state_from_filesystem,
+)
+from scheduler.discovery_select import (
+    domains_from_seeds,
+    ensure_backlog_contains,
+    infer_category,
+    physical_asset_preclass,
+    refine_physical_class_after_fetch,
+    select_next_candidate,
+)
 from scheduler.status_log import append_status, utc_now_iso
 
 BACKLOG_PATH = Path(__file__).resolve().parent / "backlog.json"
@@ -199,47 +212,18 @@ def resolve_candidate(
 
     Returns (candidate, advance_backlog, meta).
 
-    - No override (backlog-order): next backlog item; advance on success.
-    - Named override (any name, on backlog or synthetic): investigate that
-      candidate; **never** advance next_index — ad-hoc checks must not
-      skip queue order.
+    Primary path uses physical-RWA pool ranking and skips anything that
+    already has FINDINGS.md / durable candidate state (fixes AgriFi loops
+    when next_index is stale because discovery PRs were never merged).
     """
-    items = backlog.get("candidates") or []
-    idx = int(backlog.get("next_index", 0))
-    meta: dict[str, Any] = {
-        "override": bool(candidate_name and candidate_name.strip()),
-        "next_index_before": idx,
-        "backlog_len": len(items),
-    }
-
-    if not candidate_name or not candidate_name.strip():
-        if not items:
-            raise RuntimeError("backlog is empty — nothing to investigate")
-        if idx >= len(items):
-            raise RuntimeError(
-                f"backlog exhausted (next_index={idx}, len={len(items)}). "
-                "Add candidates or reset next_index manually."
-            )
-        cand = items[idx]
-        meta["source"] = "backlog_next"
-        meta["manual_mode"] = "backlog_order"
-        meta["advance_backlog"] = True
-        return cand, True, meta
-
-    matched = match_backlog_candidate(items, candidate_name)
-    if matched is not None:
-        cand, found_idx = matched
-        meta["source"] = "backlog_match"
-        meta["matched_index"] = found_idx
-        meta["manual_mode"] = "override"
-        meta["advance_backlog"] = False
-        return cand, False, meta
-
-    cand = synthetic_candidate(candidate_name)
-    meta["source"] = "synthetic_on_demand"
-    meta["manual_mode"] = "override"
-    meta["advance_backlog"] = False
-    return cand, False, meta
+    cand, _state, meta = select_next_candidate(
+        backlog,
+        candidate_name=candidate_name,
+        match_fn=match_backlog_candidate,
+        synthetic_fn=synthetic_candidate,
+    )
+    advance = bool(meta.get("advance_backlog"))
+    return cand, advance, meta
 
 
 def html_to_text(raw: str) -> str:
@@ -312,12 +296,43 @@ def fetch_url(url: str) -> dict[str, Any]:
         }
 
 
-def classify(blob: str, reachable_count: int) -> tuple[str, str]:
+def classify(
+    blob: str,
+    reachable_count: int,
+    *,
+    physical_class: str,
+) -> tuple[str, str]:
     """
-    Provisional classification from reachable seed text.
+    Provisional classification from reachable seed text + physical-asset gate.
     Defaults to insufficient-information when evidence is thin —
     never invents candidate-for-adapter without clear capital-only language.
+    Never promotes generic DePIN / pure-crypto to candidate-for-adapter.
     """
+    if physical_class == "generic-depin":
+        return (
+            "wrong-model",
+            "Physical-asset gate: classified `generic-depin`. The project "
+            "appears to be a network/utility token where holding the token "
+            "does not represent ownership or economic exposure to a specific "
+            "physical asset pool (Helium/Render/Filecoin-style). Rejected "
+            "before adapter research.",
+        )
+    if physical_class == "pure-crypto":
+        return (
+            "wrong-model",
+            "Physical-asset gate: classified `pure-crypto`. No meaningful "
+            "relationship to an identifiable physical real-world asset was "
+            "found. Rejected before adapter research.",
+        )
+    if physical_class == "physical-infrastructure-but-not-tokenized-asset":
+        return (
+            "wrong-model",
+            "Physical-asset gate: physical infrastructure is mentioned, but "
+            "reachable evidence does not show the token representing "
+            "ownership, revenue rights, or financing exposure to that asset. "
+            "Treated as non-tokenized-asset infrastructure for Tokn's thesis.",
+        )
+
     if reachable_count == 0:
         return (
             "insufficient-information",
@@ -338,13 +353,24 @@ def classify(blob: str, reachable_count: int) -> tuple[str, str]:
             "matching Glow / Elmnts / RealT. Provisional — human should "
             "confirm before treating as final.",
         )
-    if has_capital and not has_operator:
+    if has_capital and not has_operator and physical_class in (
+        "physical-rwa",
+        "unclear",
+    ):
+        if physical_class == "unclear":
+            return (
+                "insufficient-information",
+                "Capital-style language appeared, but the physical-asset "
+                "relationship is still `unclear` after the relevance gate. "
+                "Limited follow-up needed before candidate-for-adapter.",
+            )
         return (
             "candidate-for-adapter",
             "Reachable seeds describe a capital / ownership / royalty-style "
-            "path without clear operator-hardware requirements. This is a "
-            "**first-pass** signal only — a human must greenlight any "
-            "adapter work separately. No adapter is created by this cycle.",
+            "path tied to a physical-RWA thesis without clear "
+            "operator-hardware requirements. This is a **first-pass** signal "
+            "only — a human must greenlight any adapter work separately. "
+            "No adapter is created by this cycle.",
         )
     if "coming soon" in lower or "waitlist" in lower or "not launched" in lower:
         return (
@@ -355,23 +381,69 @@ def classify(blob: str, reachable_count: int) -> tuple[str, str]:
     return (
         "insufficient-information",
         "Seeds were reachable but did not clearly establish either a "
-        "capital-only path or a hard wrong-model operator requirement. "
-        "Manual follow-up is required (docs deep-dive, contracts, payout "
-        "shape) before a stronger classification.",
+        "capital-only physical-RWA path or a hard wrong-model operator "
+        "requirement. Manual follow-up is required (docs deep-dive, "
+        "contracts, payout shape) before a stronger classification.",
     )
 
 
-def investigate(candidate: dict[str, Any]) -> dict[str, Any]:
+def investigate(
+    candidate: dict[str, Any],
+    *,
+    selection_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     evidence = [fetch_url(u) for u in (candidate.get("seeds") or [])]
     reachable = [e for e in evidence if e["ok"]]
     blob = " ".join(e["excerpt"] for e in reachable)
-    classification, why = classify(blob, len(reachable))
+
+    pre = (selection_meta or {}).get("physical_class_pre") or physical_asset_preclass(
+        candidate
+    )
+    physical_class = refine_physical_class_after_fetch(pre, blob, candidate)
+    classification, why = classify(
+        blob, len(reachable), physical_class=physical_class
+    )
     assert classification in VALID_CLASSIFICATIONS
 
     today = date.today().isoformat()
     slug = candidate["slug"]
     name = candidate["display_name"]
     notes = candidate.get("notes", "")
+    category = candidate.get("category") or infer_category(candidate)
+    official = (candidate.get("seeds") or [None])[0] or "—"
+    discovery_source = (
+        (selection_meta or {}).get("source")
+        or candidate.get("discovery_source")
+        or "unknown"
+    )
+    previously = bool((selection_meta or {}).get("previously_investigated"))
+    duplicate = (selection_meta or {}).get("duplicate")
+
+    # Physical-asset narrative (honest; no fabrication)
+    if physical_class == "physical-rwa":
+        physical_asset = (
+            "Official/seed language indicates a physical real-world asset "
+            "or identifiable asset pool (see excerpts)."
+        )
+        why_physical = (
+            "Physical + ownership/economic-exposure markers present in "
+            "notes/seeds/reachable text."
+        )
+        why_not_depin = (
+            "Not classified as generic DePIN: evidence points to asset "
+            "claim / financing exposure rather than network-work utility alone."
+        )
+    elif physical_class == "generic-depin":
+        physical_asset = "No Tokn-qualifying tokenized physical-asset claim identified."
+        why_physical = "Failed physical-RWA gate."
+        why_not_depin = "N/A — this *is* classified as generic DePIN / operator network."
+    else:
+        physical_asset = "Not independently confirmed in this pass."
+        why_physical = f"Physical-asset gate result: `{physical_class}`."
+        why_not_depin = (
+            "Gate did not assign generic-depin; still not sufficient for "
+            "unqualified physical-RWA promotion without more evidence."
+        )
 
     rows = []
     for e in evidence:
@@ -403,10 +475,29 @@ Backlog notes: {notes}
 
 ---
 
+## Discovery summary
+
+| Field | Value |
+| --- | --- |
+| Candidate | {name} (`{slug}`) |
+| Category | `{category}` |
+| Official website | `{official}` |
+| Token / asset identity | Not fabricated in discovery — see seeds/excerpts; ticker alone is never identity |
+| Physical asset | {physical_asset} |
+| Why it qualifies as physical RWA | {why_physical} |
+| Why it is NOT generic DePIN | {why_not_depin} |
+| Previously investigated? | {"yes" if previously else "no"} |
+| Duplicate detected? | {duplicate if duplicate else "no"} |
+| Discovery source | `{discovery_source}` |
+| Physical-asset gate | `{physical_class}` |
+| Classification | `{classification}` |
+
+---
+
 ## What was checked
 
 Seed URLs were fetched live in this cycle
-({("on-demand override" if candidate.get("on_demand") else "backlog / matched seeds")}).
+({("on-demand override" if candidate.get("on_demand") else "ranked physical-RWA pool / backlog")}).
 
 | Source | Result |
 | --- | --- |
@@ -441,6 +532,8 @@ adapter work for a `candidate-for-adapter` disposition.
 ## Scheduler notes
 
 - One candidate per cycle (this file).
+- Already-investigated slugs (existing FINDINGS.md / candidate state) are
+  skipped on future discovery runs even if `next_index` is stale.
 - Output is intended to land as a PR for human merge — nothing auto-merges.
 """
     return {
@@ -451,6 +544,10 @@ adapter work for a `candidate-for-adapter` disposition.
         "evidence": evidence,
         "reachable_count": len(reachable),
         "date": today,
+        "category": category,
+        "physical_class": physical_class,
+        "discovery_source": discovery_source,
+        "domains": domains_from_seeds(candidate.get("seeds") or []),
     }
 
 
@@ -523,8 +620,18 @@ def main() -> int:
 
     try:
         backlog = load_backlog()
+        # Sync durable state first so AgriFi / others with FINDINGS are known
+        # before selection — even when next_index is stale.
+        sync_state_from_filesystem()
         candidate, advance, meta = resolve_candidate(backlog, args.candidate_name)
-        details.update(meta)
+        details.update(
+            {
+                k: v
+                for k, v in meta.items()
+                if k != "rejected_during_selection"  # keep status log smaller
+            }
+        )
+        details["rejected_count"] = len(meta.get("rejected_during_selection") or [])
         # For scheduled runs, manual_mode is not applicable.
         if args.trigger == "scheduled":
             details["manual_mode"] = None
@@ -537,9 +644,21 @@ def main() -> int:
         details["candidate"] = slug
         details["display_name"] = candidate.get("display_name")
         details["advance_backlog"] = advance
+        details["category"] = candidate.get("category") or infer_category(candidate)
+        details["physical_class_pre"] = meta.get("physical_class_pre")
 
-        result = investigate(candidate)
+        # Hard refuse re-writing an existing FINDINGS.md as a "new discovery".
+        existing_findings = CANDIDATES_DIR / slug / "FINDINGS.md"
+        if existing_findings.is_file() and not args.dry_run:
+            raise RuntimeError(
+                f"Refusing to rediscover '{slug}': {existing_findings} already "
+                "exists. Selection should have skipped this candidate."
+            )
+
+        result = investigate(candidate, selection_meta=meta)
         details["classification"] = result["classification"]
+        details["physical_class"] = result["physical_class"]
+        details["category"] = result["category"]
         details["reachable_count"] = result["reachable_count"]
         details["evidence"] = [
             {
@@ -560,7 +679,7 @@ def main() -> int:
                 finished_at=utc_now_iso(),
                 details={**details, "note": "dry-run; no files written"},
             )
-            print("DRY RUN — backlog not advanced", file=sys.stderr)
+            print("DRY RUN — backlog/state not advanced", file=sys.stderr)
             return 0
 
         out_dir = CANDIDATES_DIR / slug
@@ -571,14 +690,43 @@ def main() -> int:
             slug, result["display_name"], result["classification"], result["date"]
         )
 
+        # Persist candidate onto backlog if it came from the pool.
+        ensure_backlog_contains(backlog, candidate)
+
+        # Durable state — survives unmerged pointer advances / fresh checkouts.
+        state = sync_state_from_filesystem()
+        mark_investigated(
+            state,
+            slug=slug,
+            display_name=result["display_name"],
+            findings_classification=result["classification"],
+            category=result["category"],
+            physical_class=result["physical_class"],
+            discovery_source=result.get("discovery_source"),
+            domains=result.get("domains"),
+        )
+        save_state(state)
+
         if advance:
-            idx = int(backlog.get("next_index", 0))
-            backlog["next_index"] = idx + 1
+            # Compatibility: keep next_index in sync by moving it to the first
+            # backlog row that is still uninvestigated (not blind +1 on a
+            # stale AgriFi slot).
+            items = backlog.get("candidates") or []
+            new_idx = len(items)
+            for i, c in enumerate(items):
+                cslug = c.get("slug") or ""
+                if c.get("status") == "closed-category-probe":
+                    continue
+                if not (CANDIDATES_DIR / cslug / "FINDINGS.md").is_file():
+                    new_idx = i
+                    break
+            backlog["next_index"] = new_idx
             save_backlog(backlog)
-            details["next_index_after"] = idx + 1
-            print(f"Advanced backlog next_index -> {idx + 1}")
+            details["next_index_after"] = new_idx
+            print(f"Advanced backlog next_index -> {new_idx} (first uninvestigated)")
         else:
             details["next_index_after"] = backlog.get("next_index")
+            save_backlog(backlog)  # may have gained pool candidate
             print(
                 "Backlog pointer unchanged "
                 f"(named override; next_index stays {backlog.get('next_index')})"
@@ -588,8 +736,10 @@ def main() -> int:
 
         # Deeper research pass — only for candidate-for-adapter; additive
         # ADAPTER_SPEC.md; never auto-approves adapter work.
+        # Physical gate must also be physical-rwa (not generic-depin).
         if (
             result["classification"] == "candidate-for-adapter"
+            and result["physical_class"] == "physical-rwa"
             and not args.skip_research
         ):
             from scheduler.run_research_agent import research_candidate, write_spec
@@ -600,11 +750,15 @@ def main() -> int:
             details["research_reachable_count"] = sum(
                 1 for e in research["evidence"] if e["ok"]
             )
+            # Refresh state with readiness if present — never auto-promote
+            # beyond what the research agent wrote.
+            state = sync_state_from_filesystem()
+            save_state(state)
             print(f"Wrote {spec_path} (research agent; human review still required)")
         elif result["classification"] == "candidate-for-adapter":
             details["adapter_spec_path"] = None
             details["research_skipped"] = True
-            print("Research agent skipped (--skip-research)")
+            print("Research agent skipped (--skip-research or non-physical-rwa gate)")
 
         append_status(
             job="discovery",
@@ -615,9 +769,11 @@ def main() -> int:
         )
         print(f"Wrote {findings_path}")
         print(f"Classification: {result['classification']}")
+        print(f"Physical-asset gate: {result['physical_class']}")
+        print(f"Category: {result['category']}")
         print(
             f"trigger={args.trigger} manual_mode={details.get('manual_mode')} "
-            f"advance_backlog={advance}"
+            f"advance_backlog={advance} selection={meta.get('selection_mode')}"
         )
         return 0
 

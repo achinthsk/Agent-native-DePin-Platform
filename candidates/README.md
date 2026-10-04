@@ -1,9 +1,11 @@
 # Candidates — discovery research log
 
-This directory is a **public, honest research log** for evaluating DePIN / RWA
-projects as possible future yield-opportunity sources. It is **not** a product
-surface: nothing here is live on the platform, scored by the engine, or exposed
-by the API.
+This directory is a **public, honest research log** for evaluating **physical
+real-world asset / infrastructure** tokenization projects as possible future
+yield-opportunity sources. Tokn prioritizes tokens with economic exposure to
+identifiable physical assets — not generic DePIN network/utility tokens. It is
+**not** a product surface: nothing here is live on the platform, scored by the
+engine, or exposed by the API.
 
 ## Hard rules
 
@@ -77,6 +79,12 @@ For candidates already classified **`candidate-for-adapter`**,
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| Mineralized | `insufficient-information` | 2026-10-04 | [`mineralized/FINDINGS.md`](./mineralized/FINDINGS.md) |
+| Blocksquare | `candidate-for-adapter` | 2026-10-04 | [`blocksquare/FINDINGS.md`](./blocksquare/FINDINGS.md) |
+| Tangible | `candidate-for-adapter` | 2026-10-04 | [`tangible/FINDINGS.md`](./tangible/FINDINGS.md) |
+| Landshare | `insufficient-information` | 2026-10-04 | [`landshare/FINDINGS.md`](./landshare/FINDINGS.md) |
+| Energy Web | `insufficient-information` | 2026-10-04 | [`energy-web/FINDINGS.md`](./energy-web/FINDINGS.md) |
+| Lofty | `insufficient-information` | 2026-10-04 | [`lofty/FINDINGS.md`](./lofty/FINDINGS.md) |
 | AgriFi | `candidate-for-adapter` | 2026-10-03 | [`agrifi/FINDINGS.md`](./agrifi/FINDINGS.md) · [`ADAPTER_SPEC.md`](./agrifi/ADAPTER_SPEC.md) |
 | PTX | `candidate-for-adapter` | 2026-09-11 | [`ptx/FINDINGS.md`](./ptx/FINDINGS.md) |
 | Mining royalty tokenization (category) | `insufficient-information` | 2026-08-21 | [`mining-royalty-tokenization/FINDINGS.md`](./mining-royalty-tokenization/FINDINGS.md) |
