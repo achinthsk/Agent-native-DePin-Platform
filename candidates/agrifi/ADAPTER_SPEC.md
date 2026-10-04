@@ -3,7 +3,7 @@
 **Status:** research document only — **not** an approval to build an adapter.
 **Prerequisite FINDINGS:** [`FINDINGS.md`](./FINDINGS.md) must already classify
 this candidate as `candidate-for-adapter`.
-**Date researched:** 2026-10-03
+**Date researched:** 2026-10-04
 **Research agent:** `scheduler/run_research_agent.py`
 **Investigator note:** Additive to FINDINGS.md (FINDINGS was not modified by
 this agent). Writes **no** adapter code, schema fields, scoring weights,
@@ -95,8 +95,8 @@ this candidate’s underlying economics was confirmed in this research pass.
 | `https://agrifi.tech/` | HTTP 200 — live (text/html) |
 | `https://blog.agrifi.tech/how-agrifi-turns-farmland-into-real-world-asset-class-agriculture-blockchainsolution` | HTTP 200 — live (text/html) |
 | `https://agrifi.tech/whitepaper` | HTTP 404: Not Found |
-| `https://docs.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'docs.agrifi.tech'. (_ssl.c:1000) |
-| `https://app.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'app.agrifi.tech'. (_ssl.c:1000) |
+| `https://docs.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'docs.agrifi.tech'. (_ssl.c:1010) |
+| `https://app.agrifi.tech/` | URL error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'app.agrifi.tech'. (_ssl.c:1010) |
 | `https://blog.agrifi.tech/` | HTTP 200 — live (text/html) |
 | `https://agrifi.tech/whitepaper.pdf` | HTTP 404: Not Found |
 | `https://agrifi.tech/llm/agrifi-llm-knowledge-base.html` | HTTP 200 — live (text/html) |
@@ -330,7 +330,7 @@ Not consumed by scoring/schema. For humans and future tooling only.
 ```yaml
 adapter_readiness:
   status: token-data-only
-  researched_at: "2026-10-03T17:19Z"
+  researched_at: "2026-10-04T10:28Z"
 
   token_verification:
     available: true
