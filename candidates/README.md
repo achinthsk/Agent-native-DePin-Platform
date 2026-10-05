@@ -79,6 +79,11 @@ For candidates already classified **`candidate-for-adapter`**,
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| RealX — individual property | `candidate-for-adapter` | 2026-10-05 | [`realx-individual-property/FINDINGS.md`](./realx-individual-property/FINDINGS.md) |
+| Lofty — individual property | `insufficient-information` | 2026-10-05 | [`lofty-individual-property/FINDINGS.md`](./lofty-individual-property/FINDINGS.md) |
+| Albion ALB-WR1-R1/R2 | `insufficient-information` | 2026-10-05 | [`albion-alb-wr1/FINDINGS.md`](./albion-alb-wr1/FINDINGS.md) |
+| WTIC | `candidate-for-adapter` | 2026-10-05 | [`wtic/FINDINGS.md`](./wtic/FINDINGS.md) |
+| xU3O8 | `candidate-for-adapter` | 2026-10-05 | [`xu3o8/FINDINGS.md`](./xu3o8/FINDINGS.md) |
 | Parcl | `insufficient-information` | 2026-10-05 | [`parcl/FINDINGS.md`](./parcl/FINDINGS.md) |
 | Agro Digital Token | `insufficient-information` | 2026-10-04 | [`agro-digital-token/FINDINGS.md`](./agro-digital-token/FINDINGS.md) |
 | Toucan Protocol | `insufficient-information` | 2026-10-04 | [`toucan-protocol/FINDINGS.md`](./toucan-protocol/FINDINGS.md) |
