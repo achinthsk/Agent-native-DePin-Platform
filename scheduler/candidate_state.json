@@ -10,7 +10,8 @@
     "mining",
     "other_physical_rwa",
     "farmland",
-    "real_estate"
+    "real_estate",
+    "energy"
   ],
   "candidates": {
     "aethir": {
@@ -268,6 +269,29 @@
       "investigated": true,
       "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
+    },
+    "albion-labs-wressle-1": {
+      "slug": "albion-labs-wressle-1",
+      "display_name": "Albion Labs \u2014 tokenized Wressle-1 oil royalty",
+      "category": "energy",
+      "domains": [
+        "albion.exchange",
+        "albionlabs.org",
+        "basescan.org",
+        "github.com",
+        "lse.co.uk",
+        "raw.githubusercontent.com"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "blocked"
     }
   }
 }
