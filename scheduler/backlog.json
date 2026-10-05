@@ -207,6 +207,29 @@
         "ALB-WR1-R2",
         "wressle"
       ]
+    },
+    {
+      "slug": "realio",
+      "display_name": "Realio Network",
+      "seeds": [
+        "https://realio.network/",
+        "https://docs.realio.network/",
+        "https://realio.network/ecosystem"
+      ],
+      "notes": "Real-world asset issuance network focused on real estate / alternatives",
+      "category": "real_estate",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "digishares",
+      "display_name": "DigiShares",
+      "seeds": [
+        "https://www.digishares.io/",
+        "https://www.digishares.io/platform"
+      ],
+      "notes": "Real-estate / alternative-asset tokenization platform",
+      "category": "real_estate",
+      "discovery_source": "seed_catalog"
     }
   ]
 }
