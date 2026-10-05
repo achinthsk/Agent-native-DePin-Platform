@@ -10,6 +10,8 @@
     "mining",
     "other_physical_rwa",
     "farmland",
+    "real_estate",
+    "real_estate",
     "real_estate"
   ],
   "candidates": {
@@ -268,6 +270,55 @@
       "investigated": true,
       "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
+    },
+    "albion-labs-wressle-1": {
+      "slug": "albion-labs-wressle-1",
+      "display_name": "albion-labs-wressle-1",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "adapter-ready",
+      "adapter_readiness": "adapter-ready",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true
+    },
+    "realio": {
+      "slug": "realio",
+      "display_name": "Realio Network",
+      "category": "real_estate",
+      "domains": [
+        "docs.realio.network",
+        "realio.network"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "unclear",
+      "discovery_source": "pool_match"
+    },
+    "digishares": {
+      "slug": "digishares",
+      "display_name": "DigiShares",
+      "category": "real_estate",
+      "domains": [
+        "digishares.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "unclear",
+      "discovery_source": "pool_match"
     }
   }
 }

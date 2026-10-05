@@ -79,6 +79,8 @@ For candidates already classified **`candidate-for-adapter`**,
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| DigiShares | `insufficient-information` | 2026-10-05 | [`digishares/FINDINGS.md`](./digishares/FINDINGS.md) |
+| Realio Network | `insufficient-information` | 2026-10-05 | [`realio/FINDINGS.md`](./realio/FINDINGS.md) |
 | Parcl | `insufficient-information` | 2026-10-05 | [`parcl/FINDINGS.md`](./parcl/FINDINGS.md) |
 | Agro Digital Token | `insufficient-information` | 2026-10-04 | [`agro-digital-token/FINDINGS.md`](./agro-digital-token/FINDINGS.md) |
 | Toucan Protocol | `insufficient-information` | 2026-10-04 | [`toucan-protocol/FINDINGS.md`](./toucan-protocol/FINDINGS.md) |
