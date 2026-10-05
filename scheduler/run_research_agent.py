@@ -451,6 +451,342 @@ def collect_addresses(texts: list[str]) -> list[str]:
     return found
 
 
+# chainId / explorer / keyword → internal CHAIN_RPC key
+_CHAIN_HINTS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bchainid\s*[:=]?\s*8453\b", re.I), "base"),
+    (re.compile(r"\bbasescan\.org\b", re.I), "base"),
+    (re.compile(r"\bon\s+base\b", re.I), "base"),
+    (re.compile(r"\bbase\s+network\b", re.I), "base"),
+    (re.compile(r"\bchainid\s*[:=]?\s*137\b", re.I), "polygon"),
+    (re.compile(r"\bpolygonscan\.org\b", re.I), "polygon"),
+    (re.compile(r"\bpolygon\b", re.I), "polygon"),
+    (re.compile(r"\bchainid\s*[:=]?\s*56\b", re.I), "bsc"),
+    (re.compile(r"\bbscscan\.org\b", re.I), "bsc"),
+    (re.compile(r"\b(bsc|bnb|binance)\b", re.I), "bsc"),
+    (re.compile(r"\bchainid\s*[:=]?\s*42161\b", re.I), "arbitrum"),
+    (re.compile(r"\barbiscan\.org\b", re.I), "arbitrum"),
+    (re.compile(r"\barbitrum\b", re.I), "arbitrum"),
+    (re.compile(r"\betherscan\.org\b", re.I), "ethereum"),
+    (re.compile(r"\bchainid\s*[:=]?\s*1\b", re.I), "ethereum"),
+    (re.compile(r"\bethereum\b", re.I), "ethereum"),
+]
+
+
+def infer_chains_for_address(address: str, blob: str) -> list[str]:
+    """
+    Infer likely EVM chain(s) for an address from nearby / global research text.
+    Prefer local context windows around the address (explorer links, chainId).
+    """
+    ordered: list[str] = []
+    low = (address or "").lower()
+    # Prefer windows around each occurrence of the address.
+    for m in re.finditer(re.escape(address), blob or "", flags=re.I):
+        start = max(0, m.start() - 240)
+        end = min(len(blob), m.end() + 240)
+        window = blob[start:end]
+        for pat, chain in _CHAIN_HINTS:
+            if pat.search(window) and chain not in ordered and chain in CHAIN_RPC:
+                ordered.append(chain)
+    # Global blob fallback
+    if not ordered:
+        for pat, chain in _CHAIN_HINTS:
+            if pat.search(blob or "") and chain not in ordered and chain in CHAIN_RPC:
+                ordered.append(chain)
+    # Always allow a multi-chain probe fallback if hints miss (wrong-chain
+    # eth_call was the Albion failure mode: Base addr probed as Ethereum).
+    for chain in ("ethereum", "base", "polygon", "arbitrum", "bsc"):
+        if chain in CHAIN_RPC and chain not in ordered:
+            ordered.append(chain)
+    # Keep address key unused warning quiet
+    _ = low
+    return ordered
+
+
+def significant_identity_tokens(candidate: dict[str, Any]) -> list[str]:
+    """Brand/product tokens used to match on-chain name/symbol to a candidate."""
+    raw_bits = [
+        candidate.get("display_name") or "",
+        candidate.get("slug") or "",
+        candidate.get("notes") or "",
+    ]
+    # Explicit symbol-like tokens from notes / display (ALB-WR1-R1 etc.)
+    text = " ".join(raw_bits)
+    tokens: list[str] = []
+    for m in re.findall(r"\b([A-Za-z][A-Za-z0-9-]{2,})\b", text):
+        t = m.lower().strip("-")
+        if t in {
+            "the",
+            "and",
+            "for",
+            "with",
+            "from",
+            "token",
+            "tokens",
+            "tokenized",
+            "labs",
+            "network",
+            "protocol",
+            "individual",
+            "property",
+            "oil",
+            "gas",
+            "on",
+        }:
+            continue
+        if len(t) >= 4:
+            tokens.append(re.sub(r"[^a-z0-9]", "", t))
+    # Slug hyphen parts
+    for part in (candidate.get("slug") or "").split("-"):
+        p = re.sub(r"[^a-z0-9]", "", part.lower())
+        if len(p) >= 4:
+            tokens.append(p)
+    # Preserve order, unique
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in tokens:
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
+def token_metadata_matches_candidate(
+    candidate: dict[str, Any], name: str | None, symbol: str | None
+) -> bool:
+    """
+    True when live ERC-20 name/symbol aligns with the candidate identity.
+    Requires meaningful brand overlap — not ticker-alone for short names.
+    """
+    bn = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    bs = re.sub(r"[^a-z0-9]", "", (symbol or "").lower())
+    if not bn and not bs:
+        return False
+    sigs = significant_identity_tokens(candidate)
+    if not sigs:
+        compact = re.sub(
+            r"[^a-z0-9]", "", (candidate.get("display_name") or "").lower()
+        )
+        return bool(compact and (compact[:5] in bn or compact in bn))
+    # Need at least one strong brand token in on-chain name, or exact symbol
+    # equality to a multi-char published symbol-like token from notes/name.
+    name_hits = [t for t in sigs if len(t) >= 4 and t in bn]
+    sym_hits = [t for t in sigs if t == bs and len(t) >= 4]
+    if name_hits:
+        return True
+    if sym_hits:
+        return True
+    # Hyphenated symbols like ALB-WR1-R1 → albwr1r1 compact
+    for t in sigs:
+        if len(t) >= 6 and (t in bs or bs in t):
+            return True
+    return False
+
+
+def classify_issuer_source(url: str, official_hosts: set[str]) -> bool:
+    """Whether a URL counts as issuer-controlled for address publication."""
+    try:
+        host = urlparse(url).netloc.lower()
+    except Exception:
+        return False
+    if host.startswith("www."):
+        host = host[4:]
+    if host in official_hosts:
+        return True
+    # Common issuer publication surfaces
+    if host in {"raw.githubusercontent.com", "github.com"}:
+        return True
+    if host.endswith(".gitbook.io"):
+        return True
+    return False
+
+
+def extract_issuer_published_addresses(
+    evidence: list[dict[str, Any]], candidate: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """
+    Collect contract addresses published in issuer-controlled reachable sources,
+    with per-address chain hints from local context.
+    """
+    seeds = candidate.get("seeds") or []
+    official_hosts: set[str] = set()
+    for u in seeds:
+        try:
+            h = urlparse(u).netloc.lower()
+            if h.startswith("www."):
+                h = h[4:]
+            if h:
+                official_hosts.add(h)
+        except Exception:
+            pass
+    # Also treat primary display-name host guesses lightly via seed hosts only.
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for e in evidence:
+        if not e.get("ok"):
+            continue
+        url = e.get("url") or ""
+        text = e.get("raw_text") or e.get("excerpt") or ""
+        issuer = classify_issuer_source(url, official_hosts)
+        # Explorer pages can corroborate but are not issuer publication.
+        for m in ADDR_RE.finditer(text):
+            addr = m.group(0)
+            low = addr.lower()
+            if low in seen:
+                continue
+            start = max(0, m.start() - 240)
+            end = min(len(text), m.end() + 240)
+            window = text[start:end]
+            chains = infer_chains_for_address(addr, window + "\n" + text[:2000])
+            out.append(
+                {
+                    "address": addr,
+                    "source_url": url,
+                    "issuer_published": issuer,
+                    "chains": chains,
+                    "context": re.sub(r"\s+", " ", window)[:220],
+                }
+            )
+            seen.add(low)
+    # Prefer issuer-published first
+    out.sort(key=lambda r: (not r["issuer_published"], r["address"].lower()))
+    return out
+
+
+def resolve_token_identity(
+    *,
+    candidate: dict[str, Any],
+    evidence: list[dict[str, Any]],
+    blob: str,
+    dex_hits: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Establish TOKEN IDENTITY via an explicit evidence chain:
+
+      issuer-published address (preferred)
+        → chain established
+        → live eth_call
+        → name/symbol/decimals/totalSupply match candidate identity
+        → optional market/indexer corroboration
+
+    Token identity ≠ asset backing ≠ economic/payout verification.
+    """
+    published = extract_issuer_published_addresses(evidence, candidate)
+    # Also consider addresses in aggregate blob (may include followed pages)
+    for a in collect_addresses([blob])[:12]:
+        if not any(p["address"].lower() == a.lower() for p in published):
+            published.append(
+                {
+                    "address": a,
+                    "source_url": "(aggregate research text)",
+                    "issuer_published": False,
+                    "chains": infer_chains_for_address(a, blob),
+                    "context": "",
+                }
+            )
+
+    attempts: list[dict[str, Any]] = []
+    for pub in published[:16]:
+        addr = pub["address"]
+        for chain in pub["chains"][:5]:
+            rpc = CHAIN_RPC.get(chain)
+            if not rpc:
+                continue
+            probe = probe_erc20(addr, rpc, chain)
+            attempt = {
+                "address": addr,
+                "chain": chain,
+                "rpc": rpc,
+                "issuer_published": pub["issuer_published"],
+                "source_url": pub["source_url"],
+                "eth_call_ok": bool(probe.get("ok")),
+                "name": probe.get("name"),
+                "symbol": probe.get("symbol"),
+            }
+            if not probe.get("ok"):
+                attempt["error"] = probe.get("error") or "eth_call failed"
+                attempts.append(attempt)
+                continue
+            matched = token_metadata_matches_candidate(
+                candidate, probe.get("name"), probe.get("symbol")
+            )
+            attempt["metadata_match"] = matched
+            attempts.append(attempt)
+            if not matched:
+                continue
+            # Success — token IDENTITY established
+            probe["ok"] = True
+            probe["issuer_published"] = pub["issuer_published"]
+            probe["address_source_url"] = pub["source_url"]
+            probe["identity_evidence"] = {
+                "issuer_published_address": bool(pub["issuer_published"]),
+                "chain_established": True,
+                "eth_call_verified": True,
+                "metadata_match": True,
+                "market_corroboration": False,  # filled by caller if dex pairs exist
+            }
+            # Confidence: issuer+rpc+match = high; rpc+match without issuer = medium
+            probe["identity_confidence"] = (
+                "high" if pub["issuer_published"] else "medium"
+            )
+            probe["identity_attempts"] = attempts
+            return probe
+
+    # DexScreener fallback (not sufficient alone for short tickers)
+    name_l = (candidate.get("display_name") or "").lower()
+    compact_name = re.sub(r"[^a-z0-9]", "", name_l)
+    short_ticker = len(compact_name) <= 4
+    for p in dex_hits:
+        base = p.get("baseToken") or {}
+        bname = base.get("name") or ""
+        bsym = base.get("symbol") or ""
+        addr = base.get("address")
+        chain = (p.get("chainId") or "ethereum").lower()
+        if not addr or not token_metadata_matches_candidate(candidate, bname, bsym):
+            continue
+        if short_ticker and not any(
+            x["address"].lower() == addr.lower() and x.get("issuer_published")
+            for x in published
+        ):
+            # Keep as collision-risk note only
+            return {
+                "ok": False,
+                "unconfirmed_ticker_collision_risk": True,
+                "address": addr,
+                "chain": chain,
+                "name": bname,
+                "symbol": bsym,
+                "error": (
+                    "Short-ticker DexScreener hit without issuer-published "
+                    "contract address corroboration — not treated as confirmed "
+                    "token identity"
+                ),
+                "identity_attempts": attempts,
+            }
+        rpc = CHAIN_RPC.get(chain, CHAIN_RPC["ethereum"])
+        probe = probe_erc20(addr, rpc, chain)
+        if probe.get("ok") and token_metadata_matches_candidate(
+            candidate, probe.get("name"), probe.get("symbol")
+        ):
+            probe["issuer_published"] = False
+            probe["identity_confidence"] = "medium"
+            probe["identity_evidence"] = {
+                "issuer_published_address": False,
+                "chain_established": True,
+                "eth_call_verified": True,
+                "metadata_match": True,
+                "market_corroboration": True,
+            }
+            probe["identity_attempts"] = attempts
+            return probe
+
+    return {
+        "ok": False,
+        "error": "No issuer-published + eth_call-verified token identity established",
+        "identity_attempts": attempts[:12],
+    }
+
+
 def coingecko_search(query: str) -> dict[str, Any]:
     try:
         req = Request(
@@ -519,6 +855,20 @@ def build_assessment(
     independent_market = market_ok or bool(cg_coins)
     unconfirmed_ticker = bool(
         token_probe and token_probe.get("unconfirmed_ticker_collision_risk")
+    )
+    identity_evidence = (
+        (token_probe or {}).get("identity_evidence")
+        if token_probe
+        else None
+    ) or {
+        "issuer_published_address": False,
+        "chain_established": False,
+        "eth_call_verified": False,
+        "metadata_match": False,
+        "market_corroboration": False,
+    }
+    identity_confidence = (
+        (token_probe or {}).get("identity_confidence") if token_ok else "none"
     )
 
     # Heuristic: underlying/economic contracts published?
@@ -638,23 +988,88 @@ def build_assessment(
                 "blocker": "—",
             }
         )
-        # Address provenance caveat
+        # Address provenance — separate from asset/backing verification
+        issuer_pub = bool(token_probe.get("issuer_published"))
         claims.append(
             {
-                "claim": "Contract address is issuer-published",
-                "claimed_value": token_probe["address"],
-                "source": "DexScreener metadata match and/or docs (see research)",
-                "source_type": "DEX/indexer",
+                "claim": "TOKEN IDENTITY: contract address is issuer-published + eth_call-verified",
+                "claimed_value": (
+                    f"{token_probe.get('name')} / {token_probe.get('symbol')} @ "
+                    f"{token_probe['address']} ({token_probe.get('chain')}); "
+                    f"confidence={identity_confidence}"
+                ),
+                "source": token_probe.get("address_source_url")
+                or "DexScreener / research text",
+                "source_type": (
+                    "official documentation" if issuer_pub else "DEX/indexer"
+                ),
                 "fact_domain": "on-chain",
                 "verification_method": (
-                    "Compare issuer docs address list to probed address; "
-                    "if docs omit address, provenance is only market metadata"
+                    "Issuer-controlled source publishes address → infer chain → "
+                    "eth_call name()/symbol()/decimals()/totalSupply() → match "
+                    "candidate identity"
+                    + ("; DexScreener corroboration" if market_ok else "")
                 ),
-                "current_status": "partially-verified",
-                "adapter_output": "claims[] (provenance note)",
+                "current_status": "verified" if issuer_pub else "partially-verified",
+                "adapter_output": "token identity fields / claims[]",
                 "blocker": (
-                    "Issuer docs may not publish the address; treat DexScreener "
-                    "attribution as supporting until docs confirm"
+                    "—"
+                    if issuer_pub
+                    else (
+                        "Address provenance is market/indexer-attributed rather "
+                        "than issuer-published; token identity still eth_call-matched"
+                    )
+                ),
+            }
+        )
+        # Explicit non-claims — keep layers separate
+        claims.append(
+            {
+                "claim": "ASSET/BACKING: token represents verified physical-asset ownership/registry",
+                "claimed_value": "not established by token identity alone",
+                "source": "n/a",
+                "source_type": "official documentation",
+                "fact_domain": "physical-world",
+                "verification_method": (
+                    "Requires ownership/registry contract or independent attestation "
+                    "— NOT implied by ERC-20 identity"
+                ),
+                "current_status": (
+                    "verified" if underlying_verifiable else "blocked"
+                ),
+                "adapter_output": (
+                    "underlying_asset"
+                    if underlying_verifiable
+                    else "null / unavailable"
+                ),
+                "blocker": (
+                    "—"
+                    if underlying_verifiable
+                    else "No independently queryable ownership/registry surface"
+                ),
+            }
+        )
+        claims.append(
+            {
+                "claim": "ECONOMIC/PAYOUT: holders receive claimed royalty/revenue distributions",
+                "claimed_value": "not established by token identity alone",
+                "source": "n/a",
+                "source_type": "official documentation",
+                "fact_domain": "physical-world",
+                "verification_method": (
+                    "Requires payout/distribution contract events or public payout API "
+                    "— NOT implied by ERC-20 identity"
+                ),
+                "current_status": "verified" if economic_verifiable else "blocked",
+                "adapter_output": (
+                    "distribution_history / realized_yield_pct"
+                    if economic_verifiable
+                    else "null / unavailable"
+                ),
+                "blocker": (
+                    "—"
+                    if economic_verifiable
+                    else "No independently queryable payout/distribution surface"
                 ),
             }
         )
@@ -799,17 +1214,23 @@ def build_assessment(
         )
     elif status == "token-data-only":
         reason = (
-            "Token-level (and possibly market) facts can be independently "
-            "queried, but the underlying real-world / economic mechanism "
-            "claims lack published, queryable contracts or independent "
-            "attestations. Tokn must not equate token verification with "
-            "infrastructure verification."
+            "TOKEN IDENTITY can be established"
+            + (
+                f" (confidence={identity_confidence}; issuer-published="
+                f"{identity_evidence.get('issuer_published_address')}; "
+                f"eth_call={identity_evidence.get('eth_call_verified')})"
+                if token_ok
+                else ""
+            )
+            + ", but ASSET/BACKING verification and ECONOMIC/PAYOUT "
+            "verification are still unavailable. Tokn must not equate token "
+            "identity with physical-asset ownership or realized yield."
         )
         next_step = (
             "To become adapter-ready: issuer-published ownership/registry "
             "and/or payout-distribution contracts (or an equivalent public "
             "attestation API) that connect the token to specific underlying "
-            "assets and cashflows."
+            "assets and cashflows. Token identity alone is insufficient."
         )
     else:
         reason = (
@@ -879,6 +1300,8 @@ def build_assessment(
         "economic_bridge_verifiable": underlying_verifiable and economic_verifiable,
         "independent_market": independent_market,
         "independent_underlying": False,  # never true without third-party physical/attest
+        "identity_evidence": identity_evidence,
+        "identity_confidence": identity_confidence,
         "blockers": blockers,
         "conflicts": conflicts,
         "claims": claims,
@@ -934,6 +1357,7 @@ def build_spec_md(
         supply_s = (
             f"{supply:,.0f}" if isinstance(supply, (int, float)) else "not decoded"
         )
+        id_ev = token_probe.get("identity_evidence") or {}
         identity_token = f"""| Field | Observed |
 | --- | --- |
 | Chain | {token_probe.get("chain")} |
@@ -942,7 +1366,16 @@ def build_spec_md(
 | `symbol()` | `{token_probe.get("symbol")}` |
 | `decimals()` | `{token_probe.get("decimals")}` |
 | `totalSupply()` | {supply_s} token units (raw `{token_probe.get("totalSupply_raw")}`) |
-| RPC used | `{token_probe.get("rpc")}` |"""
+| RPC used | `{token_probe.get("rpc")}` |
+| Address source | {token_probe.get("address_source_url") or "—"} |
+| Issuer-published address? | {"YES" if token_probe.get("issuer_published") else "NO"} |
+| Identity confidence | `{token_probe.get("identity_confidence") or "n/a"}` |
+| Evidence: eth_call | {"YES" if id_ev.get("eth_call_verified") else "NO"} |
+| Evidence: metadata match | {"YES" if id_ev.get("metadata_match") else "NO"} |
+| Evidence: market corroboration | {"YES" if id_ev.get("market_corroboration") else "NO"} |
+
+**Layer separation:** this table establishes **TOKEN IDENTITY** only. It does
+**not** verify physical-asset backing, ownership/registry rights, or payouts."""
     else:
         identity_token = (
             "No ERC-20 (or equivalent) contract was confirmed via live "
@@ -1113,10 +1546,22 @@ def build_spec_md(
         else:
             checklist_lines.append(f"- [ ] {label}")
 
+    id_ev = assessment.get("identity_evidence") or {}
     yaml_block = f"""```yaml
 adapter_readiness:
   status: {assessment["status"]}
   researched_at: "{assessment["researched_at"]}"
+
+  # Three separate layers — do not collapse into one confidence value.
+  token_identity:
+    available: {str(assessment["token_ok"]).lower()}
+    confidence: {assessment.get("identity_confidence") or "none"}
+    issuer_published_address: {str(bool(id_ev.get("issuer_published_address"))).lower()}
+    chain_established: {str(bool(id_ev.get("chain_established"))).lower()}
+    eth_call_verified: {str(bool(id_ev.get("eth_call_verified"))).lower()}
+    metadata_match: {str(bool(id_ev.get("metadata_match"))).lower()}
+    market_corroboration: {str(bool(id_ev.get("market_corroboration"))).lower()}
+    note: "Token identity ≠ asset backing ≠ economic/payout verification"
 
   token_verification:
     available: {str(assessment["token_ok"]).lower()}
@@ -1141,7 +1586,7 @@ adapter_readiness:
 {chr(10).join(f'    - "{s}"' for s in assessment["recommended_scope"])}
 
   prohibited_outputs:
-{chr(10).join(f'    - "{s}"' for s in (assessment["prohibited"] or ["None"])) }
+{chr(10).join(f'    - "{s}"' for s in (assessment["prohibited"] or ["None"]))}
 ```"""
 
     return f"""# {name} — adapter specification (research)
@@ -1462,11 +1907,8 @@ def research_candidate(
 
     texts = [e.get("raw_text") or "" for e in evidence if e.get("ok")]
     blob = " ".join(texts)
-    addrs = collect_addresses(texts)
 
-    # Token discovery via DexScreener using candidate terms (generic — no
-    # asset-specific hardcoded addresses). Short tickers require stronger
-    # corroboration than symbol equality alone (collision risk).
+    # Dex search terms (supporting corroboration only — not primary identity).
     notes_l = (candidate.get("notes") or "").lower()
     product_bits = [
         b
@@ -1474,7 +1916,7 @@ def research_candidate(
             candidate.get("display_name") or "",
             candidate.get("slug") or "",
             *re.findall(
-                r"\b(agri|farm|farmland|mining|royalty|nsr|rwa|tokenized)\b",
+                r"\b(agri|farm|farmland|mining|royalty|nsr|rwa|tokenized|wressle|oil)\b",
                 notes_l,
                 flags=re.I,
             ),
@@ -1483,152 +1925,45 @@ def research_candidate(
     ]
     dex_hits: list[dict[str, Any]] = []
     for term in candidate_search_terms(candidate):
+        # Prefer shorter search terms (full display names with punctuation
+        # are poor Dex queries).
+        if len(term) > 48:
+            continue
         dex_hits.extend(dexscreener_token_search(term, prefer_name_bits=product_bits))
         if dex_hits:
             break
 
-    name_l = (candidate.get("display_name") or "").lower()
-    slug_l = (candidate.get("slug") or "").lower()
-    compact_name = re.sub(r"[^a-z0-9]", "", name_l)
-    short_ticker = len(compact_name) <= 4
-
-    def _strong_token_name_match(bname: str, bsym: str) -> bool:
-        """Reject bare short-ticker collisions without product corroboration."""
-        bn = re.sub(r"[^a-z0-9]", "", (bname or "").lower())
-        bs = (bsym or "").lower()
-        # Longer product names: require stem containment in token name.
-        if len(compact_name) >= 5:
-            return compact_name[:5] in bn or compact_name in bn
-        # Short tickers (e.g. PTX): symbol match alone is insufficient.
-        # Require (a) token name longer than ticker with product keywords, or
-        # (b) official research text already embeds this address (checked later).
-        if bs != compact_name and compact_name not in bn:
-            return False
-        product_kw = [
-            k
-            for k in (
-                "mining",
-                "royalty",
-                "nsr",
-                "farm",
-                "farmland",
-                "agri",
-                "rwa",
-                slug_l.replace("-", ""),
-            )
-            if k and len(k) >= 3
-        ]
-        if any(k in bn for k in product_kw if k != compact_name):
-            return True
-        # Name is more than ticker+generic "coin/token" fluff → weak accept only
-        # if display name itself is longer branding (handled above). Else reject.
-        fluff = {"coin", "token", "tokens", "the", "protocol", "finance", "fi"}
-        extras = [w for w in re.findall(r"[a-z]+", (bname or "").lower()) if w not in fluff]
-        return False if short_ticker else bool(extras)
-
-    token_addr = None
-    chain = "ethereum"
-    addr_from_docs = False
-    # Prefer addresses embedded in reachable official research text.
-    if addrs:
-        for a in addrs[:6]:
-            # Guess chain from surrounding blob keywords near research pass.
-            ch = "polygon" if "polygon" in blob.lower() else (
-                "bsc" if re.search(r"\b(bsc|bnb|binance)\b", blob, flags=re.I) else "ethereum"
-            )
-            probe_try = probe_erc20(a, CHAIN_RPC.get(ch, CHAIN_RPC["ethereum"]), ch)
-            if probe_try and probe_try.get("ok"):
-                tname = (probe_try.get("name") or "").lower()
-                tsym = (probe_try.get("symbol") or "").lower()
-                if _strong_token_name_match(tname, tsym) or (
-                    compact_name and compact_name in re.sub(r"[^a-z0-9]", "", tname)
-                ):
-                    token_addr = a
-                    chain = ch
-                    addr_from_docs = True
-                    token_probe_docs = probe_try
-                    break
-        else:
-            token_probe_docs = None
-    else:
-        token_probe_docs = None
-
-    if not token_addr:
-        for p in dex_hits:
-            base = p.get("baseToken") or {}
-            bname = base.get("name") or ""
-            bsym = base.get("symbol") or ""
-            if _strong_token_name_match(bname, bsym):
-                token_addr = base.get("address")
-                chain = (p.get("chainId") or "ethereum").lower()
-                break
-
-    # Short-ticker Dex hits without docs address: keep as unconfirmed candidate
-    # only if we already found nothing — do not treat as verified identity.
-    unconfirmed_ticker_hit: dict[str, Any] | None = None
-    if not token_addr and short_ticker:
-        for p in dex_hits:
-            base = p.get("baseToken") or {}
-            bsym = (base.get("symbol") or "").lower()
-            if bsym == compact_name and base.get("address"):
-                unconfirmed_ticker_hit = {
-                    "address": base.get("address"),
-                    "chain": (p.get("chainId") or "ethereum").lower(),
-                    "name": base.get("name"),
-                    "symbol": base.get("symbol"),
-                    "note": (
-                        "Short-ticker DexScreener hit without issuer-published "
-                        "contract address or product-keyword name corroboration — "
-                        "not treated as confirmed token identity"
-                    ),
-                }
-                break
-
-    if addr_from_docs and token_probe_docs:
-        token_probe = token_probe_docs
-    else:
-        rpc = CHAIN_RPC.get(chain, CHAIN_RPC["ethereum"])
-        token_probe = probe_erc20(token_addr, rpc, chain) if token_addr else None
-        if token_probe and token_probe.get("ok"):
-            tname = token_probe.get("name") or ""
-            tsym = token_probe.get("symbol") or ""
-            if not _strong_token_name_match(tname, tsym) and not addr_from_docs:
-                token_probe = {
-                    "ok": False,
-                    "error": (
-                        f"Probed token {tname}/{tsym} failed strong identity match; "
-                        "discarded to avoid ticker collision"
-                    ),
-                    "address": token_addr,
-                    "chain": chain,
-                }
-                token_addr = None
-
-    # If only unconfirmed short-ticker hit remains, do not promote to token_ok.
-    if (not token_probe or not token_probe.get("ok")) and unconfirmed_ticker_hit:
-        token_probe = {
-            "ok": False,
-            "error": unconfirmed_ticker_hit["note"],
-            "address": unconfirmed_ticker_hit["address"],
-            "chain": unconfirmed_ticker_hit["chain"],
-            "name": unconfirmed_ticker_hit.get("name"),
-            "symbol": unconfirmed_ticker_hit.get("symbol"),
-            "unconfirmed_ticker_collision_risk": True,
-        }
-        token_addr = None
-
-    dex_pairs = (
-        dexscreener_by_token(token_addr)
-        if token_addr
-        else (
-            dexscreener_by_token(unconfirmed_ticker_hit["address"])
-            if unconfirmed_ticker_hit
-            else []
-        )
+    # TOKEN IDENTITY evidence chain (issuer addr → chain → eth_call → match).
+    # Does NOT imply asset backing or payout verification.
+    token_probe = resolve_token_identity(
+        candidate=candidate,
+        evidence=evidence,
+        blob=blob,
+        dex_hits=dex_hits,
     )
-    # Market pairs alone must not imply confirmed token identity.
-    if not token_addr:
-        dex_pairs = []
+    token_addr = (
+        token_probe.get("address")
+        if token_probe and token_probe.get("ok")
+        else None
+    )
+
+    dex_pairs = dexscreener_by_token(token_addr) if token_addr else []
+    if token_probe and token_probe.get("ok"):
+        ev = token_probe.setdefault(
+            "identity_evidence",
+            {
+                "issuer_published_address": bool(token_probe.get("issuer_published")),
+                "chain_established": True,
+                "eth_call_verified": True,
+                "metadata_match": True,
+                "market_corroboration": False,
+            },
+        )
+        ev["market_corroboration"] = bool(dex_pairs)
+        if dex_pairs and token_probe.get("identity_confidence") == "medium":
+            # Market corroboration can raise medium→high when eth_call matched.
+            if ev.get("eth_call_verified") and ev.get("metadata_match"):
+                token_probe["identity_confidence"] = "high"
 
     cg = coingecko_search(candidate_search_terms(candidate)[0])
     claim_bits = extract_claim_snippets(blob)

@@ -3,7 +3,7 @@
 **Status:** research document only — **not** an approval to build an adapter.
 **Prerequisite FINDINGS:** [`FINDINGS.md`](./FINDINGS.md) must already classify
 this candidate as `candidate-for-adapter`.
-**Date researched:** 2026-10-03
+**Date researched:** 2026-10-05
 **Research agent:** `scheduler/run_research_agent.py`
 **Investigator note:** Additive to FINDINGS.md (FINDINGS was not modified by
 this agent). Writes **no** adapter code, schema fields, scoring weights,
@@ -34,13 +34,22 @@ Backlog notes: Named farmland / ag RWA tokenization project (Polygon / AGF) — 
 | `decimals()` | `18` |
 | `totalSupply()` | 7,200,000,000 token units (raw `7200000000000000000000000000`) |
 | RPC used | `https://polygon-bor-rpc.publicnode.com` |
+| Address source | — |
+| Issuer-published address? | NO |
+| Identity confidence | `high` |
+| Evidence: eth_call | YES |
+| Evidence: metadata match | YES |
+| Evidence: market corroboration | YES |
+
+**Layer separation:** this table establishes **TOKEN IDENTITY** only. It does
+**not** verify physical-asset backing, ownership/registry rights, or payouts.
 
 ### Dex / market metadata (supporting only)
 
 | Chain / DEX | Pair | Tokens | Liquidity (USD) | Price (USD) |
 | --- | --- | --- | --- | --- |
-| polygon / quickswap | `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` | AGF / USDT0 | $2344.94 | $0.008467 |
-| polygon / quickswap | `0xC5540C03C42cEe4D2cA967B662f0E9FD84b01209` | AGF / WPOL | $1698.75 | $0.008490 |
+| polygon / quickswap | `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` | AGF / USDT0 | $2343.04 | $0.008457 |
+| polygon / quickswap | `0xC5540C03C42cEe4D2cA967B662f0E9FD84b01209` | AGF / WPOL | $1688.24 | $0.008439 |
 
 CoinGecko search API returned **zero** coins for query `AgriFi` in this pass — no independent CoinGecko listing confirmed.
 
@@ -171,7 +180,7 @@ Allowed values: `adapter-ready` | `token-data-only` | `blocked`.
 
 ### Readiness rationale
 
-Token-level (and possibly market) facts can be independently queried, but the underlying real-world / economic mechanism claims lack published, queryable contracts or independent attestations. Tokn must not equate token verification with infrastructure verification.
+TOKEN IDENTITY can be established (confidence=high; issuer-published=False; eth_call=True), but ASSET/BACKING verification and ECONOMIC/PAYOUT verification are still unavailable. Tokn must not equate token identity with physical-asset ownership or realized yield.
 
 **What can currently be verified:** Token total supply equals eth_call totalSupply(), Token identity (name/symbol/decimals), Public DEX market price/liquidity exists for the token
 
@@ -179,7 +188,7 @@ Token-level (and possibly market) facts can be independently queried, but the un
 
 **Main blocker(s):** No issuer-published ownership/registry contract address for the underlying asset; No publicly reachable staking/profit/royalty distribution contract or payout API
 
-**To move to the next state:** To become adapter-ready: issuer-published ownership/registry and/or payout-distribution contracts (or an equivalent public attestation API) that connect the token to specific underlying assets and cashflows.
+**To move to the next state:** To become adapter-ready: issuer-published ownership/registry and/or payout-distribution contracts (or an equivalent public attestation API) that connect the token to specific underlying assets and cashflows. Token identity alone is insufficient.
 
 ---
 
@@ -189,8 +198,10 @@ Token-level (and possibly market) facts can be independently queried, but the un
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Token total supply equals eth_call totalSupply() | total supply 7.2 billion , fully circulating. | polygon `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` via `https://polygon-bor-rpc.publicnode.com` | blockchain | on-chain | polygon eth_call → totalSupply() @ 0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6 | verified | total_supply / claims[] | — |
 | Token identity (name/symbol/decimals) | AGRIFI / AGF / 18 | `0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6` on polygon | blockchain | on-chain | eth_call → name()/symbol()/decimals() | verified | token identity fields / claims[] | — |
-| Contract address is issuer-published | 0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6 | DexScreener metadata match and/or docs (see research) | DEX/indexer | on-chain | Compare issuer docs address list to probed address; if docs omit address, provenance is only market metadata | partially-verified | claims[] (provenance note) | Issuer docs may not publish the address; treat DexScreener attribution as supporting until docs confirm |
-| Public DEX market price/liquidity exists for the token | price=$0.008467; liquidity_usd=2344.94 | DexScreener pair `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` (polygon/quickswap) | DEX/indexer | on-chain | GET DexScreener /latest/dex/tokens/{address} | observable | token_price (context only) / claims[] | — |
+| TOKEN IDENTITY: contract address is issuer-published + eth_call-verified | AGRIFI / AGF @ 0xE4e0d3F2Fe9fa8a18C8dF296650Fc1540A564dD6 (polygon); confidence=high | DexScreener / research text | DEX/indexer | on-chain | Issuer-controlled source publishes address → infer chain → eth_call name()/symbol()/decimals()/totalSupply() → match candidate identity; DexScreener corroboration | partially-verified | token identity fields / claims[] | Address provenance is market/indexer-attributed rather than issuer-published; token identity still eth_call-matched |
+| ASSET/BACKING: token represents verified physical-asset ownership/registry | not established by token identity alone | n/a | official documentation | physical-world | Requires ownership/registry contract or independent attestation — NOT implied by ERC-20 identity | blocked | null / unavailable | No independently queryable ownership/registry surface |
+| ECONOMIC/PAYOUT: holders receive claimed royalty/revenue distributions | not established by token identity alone | n/a | official documentation | physical-world | Requires payout/distribution contract events or public payout API — NOT implied by ERC-20 identity | blocked | null / unavailable | No independently queryable payout/distribution surface |
+| Public DEX market price/liquidity exists for the token | price=$0.008457; liquidity_usd=2343.04 | DexScreener pair `0x8F86821d639105F0f678e7d78F70C6F5c8edEFBC` (polygon/quickswap) | DEX/indexer | on-chain | GET DexScreener /latest/dex/tokens/{address} | observable | token_price (context only) / claims[] | — |
 | DEX liquidity proves underlying-asset liquidity / backing | implied by marketing sometimes | DexScreener | DEX/indexer | self-reported | No valid verification — category error | blocked | null / unavailable | Market liquidity ≠ physical/underlying liquidity |
 | Staking / advertised yield APY | 5–18% APY | Official docs/blog (reachable text) | official documentation | self-reported | No verification method currently available | self-reported | claims[] (self-reported) ; realized_yield_pct=null | Staking/reward contract address not identified |
 | Fractional ownership of underlying real-world assets (docs/marketing) | As stated in official marketing/docs | Official website/docs | official website | physical-world | No verification method currently available | self-reported | claims[] ; underlying fields null until contracts exist | No public ownership/registry/distribution surface confirmed |
@@ -330,7 +341,18 @@ Not consumed by scoring/schema. For humans and future tooling only.
 ```yaml
 adapter_readiness:
   status: token-data-only
-  researched_at: "2026-10-03T17:19Z"
+  researched_at: "2026-10-05T15:29Z"
+
+  # Three separate layers — do not collapse into one confidence value.
+  token_identity:
+    available: true
+    confidence: high
+    issuer_published_address: false
+    chain_established: true
+    eth_call_verified: true
+    metadata_match: true
+    market_corroboration: true
+    note: "Token identity ≠ asset backing ≠ economic/payout verification"
 
   token_verification:
     available: true
