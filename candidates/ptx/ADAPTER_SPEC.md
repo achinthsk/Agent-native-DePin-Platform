@@ -3,7 +3,7 @@
 **Status:** research document only — **not** an approval to build an adapter.
 **Prerequisite FINDINGS:** [`FINDINGS.md`](./FINDINGS.md) must already classify
 this candidate as `candidate-for-adapter`.
-**Date researched:** 2026-10-03
+**Date researched:** 2026-10-05
 **Research agent:** `scheduler/run_research_agent.py`
 **Investigator note:** Additive to FINDINGS.md (FINDINGS was not modified by
 this agent). Writes **no** adapter code, schema fields, scoring weights,
@@ -27,8 +27,6 @@ Backlog notes: Named mining-royalty issuer (Net Smelter Royalty tokenization) �
 
 No ERC-20 (or equivalent) contract was confirmed via live `eth_call` in this pass for a token identity matching this project. Marketing may describe a token, but without a confirmed address + successful RPC getters, Tokn cannot treat token identity as verified.
 
-**Unconfirmed short-ticker Dex hit (not used as identity):** `PTX` / `PTX COIN` at `0x86d4C9E2c3c1eC4BCA0AC458bfCEc8A5f7160F13` on `bsc` — Short-ticker DexScreener hit without issuer-published contract address or product-keyword name corroboration — not treated as confirmed token identity
-
 ### Dex / market metadata (supporting only)
 
 | Chain / DEX | Pair | Tokens | Liquidity (USD) | Price (USD) |
@@ -48,8 +46,9 @@ CoinGecko search returned hit(s): DEEPTICS (DPTX), ASMPT xStock (ASMPTX), Camden
 **What was actually confirmed here**
 
 - 4/12 research URLs reachable in this pass.
-- **No** independently queryable underlying-asset registry/ownership contract was confirmed.
-- **No** independently queryable staking/profit/royalty distribution contract was confirmed.
+- Physical asset layer: `unverified`; economic right: `partially-verified` (`net_smelter_royalty`); revenue: `partially-verified`; payout: `unverified` (0 on-chain tx samples; 0 metadata records).
+- **No** independently corroborated physical-asset identity (filings/registries) was confirmed.
+- **No** machine-queryable payout/distribution surface with on-chain confirmation was established.
 
 ---
 
@@ -68,12 +67,9 @@ CoinGecko search returned hit(s): DEEPTICS (DPTX), ASMPT xStock (ASMPTX), Camden
 | Contract / surface | Address | Evidence | Adapter relevance |
 | --- | --- | --- | --- |
 | Primary token (probed) | `not confirmed` | not confirmed | Identity / supply only |
-| Ownership / asset registry | **Not confirmed** | Docs may describe; address not verified | Required for underlying claims — blocked unless published |
-| Staking / rewards | **Not confirmed** | Docs may describe; address not verified | Required for APY observation — blocked unless published |
-| Profit / royalty distribution | **Not confirmed** | Docs may describe; address not verified | Required for realized yield — blocked unless published |
+| Distribution / Safe / vault | **Not confirmed** | Docs may describe; address not verified | Required for realized yield — blocked unless published |
 
-**Events:** No verified payout/harvest event ABI + public indexer endpoint for
-this candidate’s underlying economics was confirmed in this research pass.
+**Payout observability:** No verified payout/harvest event ABI + confirmed historical txs for this candidate’s underlying economics in this research pass.
 
 ---
 
@@ -122,8 +118,9 @@ Independent market metadata is **not** independent underlying-asset verification
 | Public project web presence | High | Reachable official HTTP surfaces |
 | Capital-style (non-operator) marketing path | Medium-high | Discovery already classified `candidate-for-adapter` — first-pass only |
 | Token identity on-chain | Low | No matched token probe |
-| Underlying asset independently verifiable | Low | Ownership/registry contract reachability |
-| Economic mechanism / realized yield observable | Low | Distribution/staking contract reachability |
+| Underlying asset independently verifiable | Low | Independent filings/registries naming the asset |
+| Economic right established | Medium | Right-type evidence (filings/docs) |
+| Economic mechanism / realized yield observable | Low | Payout metadata + on-chain tx verification |
 | Independent market listing quality | Low | Dex/CG presence without implying backing |
 
 ---
@@ -151,9 +148,9 @@ Even a minimum useful verification surface could not be established: no confirme
 
 **What can currently be verified:** none beyond marketing reachability
 
-**What cannot currently be verified:** Verified underlying-asset ownership / registry identity, Observed staking APY as a verified fact, Realized underlying revenue/yield distributions, Any on-chain token identity fields
+**What cannot currently be verified:** Verified underlying-asset ownership / registry identity, Observed staking APY as a verified fact, Realized underlying revenue/yield distributions, Continuously verified production/revenue figures as facts, Any on-chain token identity fields
 
-**Main blocker(s):** Short-ticker DexScreener hit exists but issuer-published contract address / strong name corroboration is missing — token identity not confirmed (collision risk); No issuer-published ownership/registry contract address for the underlying asset; No publicly reachable staking/profit/royalty distribution contract or payout API
+**Main blocker(s):** No independently confirmed token contract via eth_call; No specific physical asset identity established from research sources; No publicly reachable payout metadata, distribution contract, or verified payout transactions
 
 **To move to the next state:** Publish contract addresses / public APIs for token identity and economic mechanism, then re-run the research agent.
 
@@ -163,7 +160,6 @@ Even a minimum useful verification surface could not be established: no confirme
 
 | Claim | Claimed value | Source | Source type | Fact domain | Verification method | Current status | Adapter output | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Token contract identity matching this project | PTX COIN/PTX @ 0x86d4C9E2c3c1eC4BCA0AC458bfCEc8A5f7160F13 on bsc | DexScreener short-ticker search (uncorroborated) | DEX/indexer | on-chain | Require issuer-published address + eth_call name/symbol match before treating as project token | blocked | null / unavailable | Short-ticker DexScreener hit without issuer-published contract address or product-keyword name corroboration — not treated as confirmed token identity |
 | Net Smelter Royalty / NSR share claims (marketing) | As stated in official marketing/docs | Official website/docs | official website | physical-world | No verification method currently available | self-reported | claims[] ; underlying fields null until contracts exist | No public ownership/registry/distribution surface confirmed |
 
 Status vocabulary: `verified` | `partially-verified` | `observable` |
@@ -202,8 +198,18 @@ Underlying asset independently verifiable: NO
 Economic connection between token and asset verifiable: NO
 ```
 
+### Evidence graph (layered)
+
+| Layer | Status | Confidence | Notes |
+| --- | --- | --- | --- |
+| token_identity | unverified | none | eth_call + issuer address provenance |
+| physical_asset | unverified | none | No specific physical asset identity established from research sources |
+| economic_right | partially-verified | medium | net_smelter_royalty |
+| revenue_mechanism | partially-verified | low | Revenue mechanism described only by issuer; not independently queryable |
+| payout_mechanism | unverified | none | records=0; onchain_sample=0; currency=n/a |
+
 **Reminder:** Independent market/indexer sources ≠ independent underlying-asset
-verification.
+verification. Every link in TOKEN→ASSET→RIGHT→REVENUE→PAYOUT needs its own evidence.
 
 ---
 
@@ -242,6 +248,7 @@ verification.
 - Verified underlying-asset ownership / registry identity
 - Observed staking APY as a verified fact
 - Realized underlying revenue/yield distributions
+- Continuously verified production/revenue figures as facts
 - Any on-chain token identity fields
 
 ### What requires human review
@@ -295,28 +302,98 @@ Not consumed by scoring/schema. For humans and future tooling only.
 ```yaml
 adapter_readiness:
   status: blocked
-  researched_at: "2026-10-03T17:19Z"
+  researched_at: "2026-10-05T15:46Z"
 
+  # Layered evidence graph — do not collapse into one confidence value.
+  token_identity:
+    status: unverified
+    confidence: none
+    issuer_published_address: false
+    chain_established: false
+    eth_call_verified: false
+    metadata_match: false
+    market_corroboration: false
+    note: "Token identity ≠ asset backing ≠ economic/payout verification"
+
+  physical_asset:
+    status: unverified
+    confidence: none
+    named_asset: ""
+    blocker: "No specific physical asset identity established from research sources"
+    evidence:
+      []
+
+  economic_right:
+    status: partially-verified
+    confidence: medium
+    right_type: "net_smelter_royalty"
+    blocker: "Economic/legal right described in issuer materials only — independent legal corroboration missing"
+    evidence:
+      - source: "issuer research corpus"
+        tier: medium
+        proves: "Issuer/docs language indicates `net_smelter_royalty`"
+        reachable: true
+        independently_verifiable: false
+
+  revenue_mechanism:
+    status: partially-verified
+    confidence: low
+    machine_queryable: false
+    blocker: "Revenue mechanism described only by issuer; not independently queryable"
+    evidence:
+      - source: "https://ptxtoken.com/"
+        tier: medium
+        proves: "Source describes how the underlying asset generates revenue"
+        reachable: true
+        independently_verifiable: false
+      - source: "https://ptxtoken.com/#how-it-works"
+        tier: medium
+        proves: "Source describes how the underlying asset generates revenue"
+        reachable: true
+        independently_verifiable: false
+      - source: "https://ptxtoken.com/#nsr"
+        tier: medium
+        proves: "Source describes how the underlying asset generates revenue"
+        reachable: true
+        independently_verifiable: false
+      - source: "https://ptxtoken.com/whitepaper"
+        tier: medium
+        proves: "Source describes how the underlying asset generates revenue"
+        reachable: true
+        independently_verifiable: false
+
+  payout_mechanism:
+    status: unverified
+    confidence: none
+    machine_queryable: false
+    payout_record_count: 0
+    onchain_verified_sample: 0
+    currency_hint: ""
+    frequency_hint: ""
+    blocker: "No publicly reachable payout metadata, distribution contract, or verified payout transactions"
+    evidence:
+      []
+
+  machine_queryable_sources:
+    []
+
+  # Back-compat summary flags
   token_verification:
     available: false
-
   underlying_asset_verification:
     available: false
-
   economic_mechanism_verification:
     available: false
-
   market_data:
     available: false
-
   independent_sources:
     available: true
     note: "Independent market/indexer data ≠ independent underlying-asset verification"
 
   critical_blockers:
-    - "Short-ticker DexScreener hit exists but issuer-published contract address / strong name corroboration is missing — token identity not confirmed (collision risk)"
-    - "No issuer-published ownership/registry contract address for the underlying asset"
-    - "No publicly reachable staking/profit/royalty distribution contract or payout API"
+    - "No independently confirmed token contract via eth_call"
+    - "No specific physical asset identity established from research sources"
+    - "No publicly reachable payout metadata, distribution contract, or verified payout transactions"
 
   recommended_adapter_scope:
     - "Do not implement an adapter yet — research only until identity is confirmed"
@@ -325,6 +402,7 @@ adapter_readiness:
     - "Verified underlying-asset ownership / registry identity"
     - "Observed staking APY as a verified fact"
     - "Realized underlying revenue/yield distributions"
+    - "Continuously verified production/revenue figures as facts"
     - "Any on-chain token identity fields"
 ```
 
