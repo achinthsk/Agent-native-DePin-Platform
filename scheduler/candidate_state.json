@@ -10,6 +10,11 @@
     "mining",
     "other_physical_rwa",
     "farmland",
+    "real_estate",
+    "other_physical_rwa",
+    "energy",
+    "energy",
+    "real_estate",
     "real_estate"
   ],
   "candidates": {
@@ -268,6 +273,100 @@
       "investigated": true,
       "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
+    },
+    "xu3o8": {
+      "slug": "xu3o8",
+      "display_name": "xU3O8",
+      "category": "other_physical_rwa",
+      "domains": [
+        "app.uranium.io",
+        "help.uranium.io",
+        "uranium.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "blocked"
+    },
+    "wtic": {
+      "slug": "wtic",
+      "display_name": "WTIC",
+      "category": "energy",
+      "domains": [
+        "app.rwa.xyz",
+        "energysubstantiation.com"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "blocked"
+    },
+    "albion-alb-wr1": {
+      "slug": "albion-alb-wr1",
+      "display_name": "Albion ALB-WR1-R1/R2",
+      "category": "energy",
+      "domains": [
+        "albionlabs.org",
+        "lse.co.uk"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match"
+    },
+    "lofty-individual-property": {
+      "slug": "lofty-individual-property",
+      "display_name": "Lofty \u2014 individual property",
+      "category": "real_estate",
+      "domains": [
+        "lofty-2.gitbook.io",
+        "lofty.ai"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match"
+    },
+    "realx-individual-property": {
+      "slug": "realx-individual-property",
+      "display_name": "RealX \u2014 individual property",
+      "category": "real_estate",
+      "domains": [
+        "realx.in",
+        "wassup.realx.in"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "blocked"
     }
   }
 }

@@ -181,6 +181,74 @@
       "notes": "Real-estate price exposure / property market synthetic \u2014 verify physical-asset claim carefully",
       "category": "real_estate",
       "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "xu3o8",
+      "display_name": "xU3O8",
+      "category": "other_physical_rwa",
+      "seeds": [
+        "https://uranium.io/en",
+        "https://help.uranium.io/en/articles/10110492-what-is-xu3o8",
+        "https://help.uranium.io/en/articles/10711639-where-is-the-physical-uranium-ore-concentrate-u3o8-stored",
+        "https://app.uranium.io/en/polygon"
+      ],
+      "notes": "Curated pipeline test: tokenized physical uranium (U3O8 / yellowcake) fractional ownership",
+      "discovery_source": "manual_curated_list"
+    },
+    {
+      "slug": "wtic",
+      "display_name": "WTIC",
+      "category": "energy",
+      "seeds": [
+        "https://www.energysubstantiation.com/",
+        "https://app.rwa.xyz/assets/WTIC"
+      ],
+      "notes": "Curated pipeline test: tokenized WTI crude oil \u2014 1 WTIC ~ 1 barrel physical oil exposure",
+      "discovery_source": "manual_curated_list"
+    },
+    {
+      "slug": "albion-alb-wr1",
+      "display_name": "Albion ALB-WR1-R1/R2",
+      "category": "energy",
+      "seeds": [
+        "https://www.albionlabs.org/",
+        "https://www.albionlabs.org/Albion-Labs-Whitepaper.pdf",
+        "https://www.lse.co.uk/rns/potential-funding-structure-with-albion-labs-pdno648eeh859t5.html"
+      ],
+      "notes": "Curated pipeline test: Albion Labs Wressle-1 well royalty tokens ALB-WR1-R1/R2",
+      "discovery_source": "manual_curated_list"
+    },
+    {
+      "slug": "lofty-individual-property",
+      "display_name": "Lofty \u2014 individual property",
+      "category": "real_estate",
+      "seeds": [
+        "https://www.lofty.ai/",
+        "https://www.lofty.ai/how-it-works",
+        "https://www.lofty.ai/list-your-property",
+        "https://lofty-2.gitbook.io/faqs/faq/how-does-the-lofty-marketplace-work"
+      ],
+      "notes": "Curated pipeline test: Lofty individual property fractional ownership (distinct from prior Lofty platform probe)",
+      "discovery_source": "manual_curated_list",
+      "aliases": [
+        "lofty property",
+        "lofty individual"
+      ]
+    },
+    {
+      "slug": "realx-individual-property",
+      "display_name": "RealX \u2014 individual property",
+      "category": "real_estate",
+      "seeds": [
+        "https://realx.in/",
+        "https://wassup.realx.in/real-estate-tokenization-india-guide/"
+      ],
+      "notes": "Curated pipeline test: RealX named/individual property FRAX tokens (India)",
+      "discovery_source": "manual_curated_list",
+      "aliases": [
+        "realx",
+        "realx property"
+      ]
     }
   ]
 }
