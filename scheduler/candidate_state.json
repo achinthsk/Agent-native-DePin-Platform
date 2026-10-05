@@ -1,6 +1,6 @@
 {
   "description": "Durable discovery candidate state. Synced from candidates/*/ and storage/ on every discovery run so unmerged pointer advances cannot re-select already-investigated assets.",
-  "updated_at": "2026-10-04",
+  "updated_at": "2026-10-05",
   "recent_categories": [
     "energy",
     "farmland",
@@ -9,7 +9,8 @@
     "real_estate",
     "mining",
     "other_physical_rwa",
-    "farmland"
+    "farmland",
+    "real_estate"
   ],
   "candidates": {
     "aethir": {
@@ -247,6 +248,25 @@
       "has_adapter_spec": false,
       "investigated": true,
       "physical_class": "unclear",
+      "discovery_source": "ranked_pool"
+    },
+    "parcl": {
+      "slug": "parcl",
+      "display_name": "Parcl",
+      "category": "real_estate",
+      "domains": [
+        "app.parcl.co",
+        "docs.parcl.co",
+        "parcl.co"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
     }
   }
