@@ -1043,23 +1043,45 @@ def extract_claim_snippets(blob: str) -> dict[str, str | None]:
 def physical_asset_cues(candidate: dict[str, Any]) -> list[str]:
     """Concrete physical-asset name cues from notes/aliases/display name."""
     bits: list[str] = []
-    for a in candidate.get("aliases") or []:
-        if a and len(str(a)) >= 4:
-            bits.append(str(a))
     notes = candidate.get("notes") or ""
-    bits.extend(re.findall(r"\b([A-Z][a-zA-Z]+-[0-9]+)\b", notes))
-    bits.extend(re.findall(r"\b(PEDL\d+)\b", notes, flags=re.I))
-    for part in re.split(r"[\s,/]+", candidate.get("display_name") or ""):
-        if re.search(r"[A-Za-z]+-\d+", part):
-            bits.append(part)
-    # Category-ish cues are too weak alone; keep named assets only.
+    display = candidate.get("display_name") or ""
+    # Prefer well/field/license-like identifiers over brand aliases.
+    bits.extend(re.findall(r"\b([A-Z][a-zA-Z]+-[0-9]+)\b", notes + " " + display))
+    bits.extend(re.findall(r"\b(PEDL\d+)\b", notes + " " + display, flags=re.I))
+    for a in candidate.get("aliases") or []:
+        s = str(a).strip()
+        # Keep alias only when it looks like an asset id (hyphen+digit / license),
+        # not a brand/ticker.
+        if re.search(r"[A-Za-z]+-\d+", s) or re.search(r"^PEDL\d+$", s, flags=re.I):
+            bits.append(s)
+        elif re.fullmatch(r"[A-Za-z]{5,}", s) and s.lower() not in {
+            "albion",
+            "labs",
+            "token",
+            "agrifi",
+            "farmland",
+        }:
+            # Single-word geo/asset names (e.g. "wressle") are useful cues.
+            bits.append(s)
+    brand_bits = {
+        w.lower()
+        for w in re.findall(r"[A-Za-z]+", display)
+        if len(w) >= 3
+    }
+    brand_bits.update({"labs", "token", "tokens", "tokenized", "oil", "gas", "rwa", "royalty"})
     seen: set[str] = set()
     out: list[str] = []
     for b in bits:
         low = b.lower().strip()
-        if low in {"albion", "labs", "token", "oil", "gas", "rwa"}:
+        if not low or low in seen:
             continue
-        if low and low not in seen and len(low) >= 4:
+        # Drop pure brand phrases ("albion labs") and multi-word brand aliases.
+        words = [w for w in re.findall(r"[a-z0-9]+", low) if w]
+        if words and all(w in brand_bits for w in words):
+            continue
+        if " " in low and not re.search(r"\d", low):
+            continue
+        if len(low) >= 4:
             seen.add(low)
             out.append(b)
     return out
@@ -1105,6 +1127,8 @@ def discover_github_economic_urls(
             r"https?://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", text
         ):
             org, repo = m.group(1), m.group(2)
+            if repo.endswith(".git"):
+                repo = repo[: -len(".git")]
             if repo.lower() in {"issues", "pulls", "actions", "projects"}:
                 continue
             if any(k in repo.lower() for k in ECONOMIC_REPO_NAME_KEYS):
@@ -1114,6 +1138,10 @@ def discover_github_economic_urls(
     repo_seen: set[str] = set()
     unique_repos: list[str] = []
     for full in repo_full_names:
+        org, _, repo = full.partition("/")
+        if repo.endswith(".git"):
+            repo = repo[: -len(".git")]
+            full = f"{org}/{repo}"
         low = full.lower()
         if low not in repo_seen:
             repo_seen.add(low)
@@ -1148,10 +1176,16 @@ def discover_github_economic_urls(
             if isinstance(t, dict) and t.get("path")
         ]
         # Prefer constants + recent metadata.json under output/
+        # Paths are relative (e.g. output/.../metadata.json) — no leading slash.
         meta_paths = [
             p
             for p in paths
-            if str(p).endswith("metadata.json") and "/output/" in str(p)
+            if str(p).endswith("metadata.json")
+            and (
+                str(p).startswith("output/")
+                or "/output/" in str(p)
+                or "payout" in str(p).lower()
+            )
         ]
         meta_paths.sort(reverse=True)
         const_paths = [
@@ -1165,9 +1199,11 @@ def discover_github_economic_urls(
         if not m:
             continue
         org, repo = m.group(1), m.group(2)
+        if repo.endswith(".git"):
+            repo = repo[: -len(".git")]
         for p in const_paths[:4]:
             add(f"https://raw.githubusercontent.com/{org}/{repo}/main/{p}")
-        for p in meta_paths[:8]:
+        for p in meta_paths[:10]:
             add(f"https://raw.githubusercontent.com/{org}/{repo}/main/{p}")
 
     return urls[:limit]
@@ -1428,7 +1464,16 @@ def build_evidence_graph(
     """
     token_ok = bool(token_probe and token_probe.get("ok"))
     id_ev = (token_probe or {}).get("identity_evidence") or {}
-    cues = [c.lower() for c in physical_asset_cues(candidate)]
+    raw_cues = physical_asset_cues(candidate)
+    # Prefer specific well/license ids before bare geo names.
+    raw_cues = sorted(
+        raw_cues,
+        key=lambda c: (
+            0 if re.search(r"[A-Za-z]+-\d+|PEDL\d+", c, flags=re.I) else 1,
+            -len(c),
+        ),
+    )
+    cues = [c.lower() for c in raw_cues]
 
     independent_ev = [
         e
@@ -3157,9 +3202,10 @@ Status vocabulary: `verified` | `partially-verified` | `observable` |
 | Capability | Available now? |
 | --- | --- |
 | Physical / real-world asset identity | {"YES" if assessment["underlying_verifiable"] else "NO"} |
-| Asset ownership / registry | {"YES" if assessment["underlying_verifiable"] else "NO"} |
-| Infrastructure operation / production | NO |
-| Revenue generation / leases / harvests | {"YES" if assessment["economic_verifiable"] else "NO"} |
+| Asset ownership / registry | {"YES" if right.get("right_type") in ("fractional_ownership",) and right.get("status") == "verified" else "NO"} |
+| Economic/legal right type established | {"YES" if right.get("status") in ("verified", "partially-verified") else "NO"} |
+| Infrastructure operation / production | {"YES" if revenue.get("status") == "verified" else "NO"} |
+| Revenue generation / leases / harvests | {"YES" if revenue.get("status") in ("verified", "partially-verified") else "NO"} |
 | Actual distributions to holders | {"YES" if assessment["economic_verifiable"] else "NO"} |
 
 ### Bridge summary
@@ -3312,12 +3358,12 @@ def research_candidate(
             evidence.append(fetch_url(u))
 
     # Pass 1: discover economic GitHub surfaces (rewards/payout/claims repos).
-    for u in discover_github_economic_urls(evidence, limit=20):
+    for u in discover_github_economic_urls(evidence, limit=24):
         if u not in seen_urls:
             seen_urls.add(u)
             evidence.append(fetch_url(u))
     # Pass 2: tree JSON now available → expand constants/metadata.json URLs.
-    for u in discover_github_economic_urls(evidence, limit=28):
+    for u in discover_github_economic_urls(evidence, limit=40):
         if u not in seen_urls:
             seen_urls.add(u)
             evidence.append(fetch_url(u, max_bytes=400_000))
