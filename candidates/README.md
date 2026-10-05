@@ -79,6 +79,7 @@ For candidates already classified **`candidate-for-adapter`**,
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| Agro Digital Token | `insufficient-information` | 2026-10-04 | [`agro-digital-token/FINDINGS.md`](./agro-digital-token/FINDINGS.md) |
 | Toucan Protocol | `insufficient-information` | 2026-10-04 | [`toucan-protocol/FINDINGS.md`](./toucan-protocol/FINDINGS.md) |
 | Mineralized | `insufficient-information` | 2026-10-04 | [`mineralized/FINDINGS.md`](./mineralized/FINDINGS.md) |
 | Blocksquare | `candidate-for-adapter` | 2026-10-04 | [`blocksquare/FINDINGS.md`](./blocksquare/FINDINGS.md) |
