@@ -181,6 +181,32 @@
       "notes": "Real-estate price exposure / property market synthetic \u2014 verify physical-asset claim carefully",
       "category": "real_estate",
       "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "albion-labs-wressle-1",
+      "display_name": "Albion Labs \u2014 tokenized Wressle-1 oil royalty",
+      "category": "energy",
+      "seeds": [
+        "https://www.albionlabs.org/",
+        "https://www.albionlabs.org/Albion-Labs-Whitepaper.pdf",
+        "https://www.albionlabs.org/terms.html",
+        "https://github.com/albionlabs/tokenlist/blob/main/README.md",
+        "https://raw.githubusercontent.com/albionlabs/tokenlist/main/albion.tokenlist.json",
+        "https://raw.githubusercontent.com/albionlabs/tokenlist/main/README.md",
+        "https://basescan.org/token/0xf836a500910453A397084ADe41321ee20a5AAde1",
+        "https://basescan.org/token/0x1d57246fd0ba134d7cc78ddf3ed829379d95f4b7",
+        "https://www.lse.co.uk/rns/potential-funding-structure-with-albion-labs-pdno648eeh859t5.html",
+        "https://albion.exchange"
+      ],
+      "notes": "Curated pipeline test: Albion Labs tokenized Wressle-1 oil royalty on Base (ALB-WR1-R1 / ALB-WR1-R2). Physical oil/gas royalty / revenue interest \u2014 not generic DePIN.",
+      "discovery_source": "manual_curated_list",
+      "aliases": [
+        "albion labs",
+        "albion",
+        "ALB-WR1-R1",
+        "ALB-WR1-R2",
+        "wressle"
+      ]
     }
   ]
 }
