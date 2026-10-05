@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One named candidate per scheduled cycle \u2014 not bare categories.",
-  "next_index": 14,
+  "next_index": 15,
   "candidates": [
     {
       "slug": "spacecoin",
@@ -168,6 +168,18 @@
       ],
       "notes": "On-chain carbon credit / environmental asset bridging \u2014 physical-world credit exposure",
       "category": "other_physical_rwa",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "parcl",
+      "display_name": "Parcl",
+      "seeds": [
+        "https://www.parcl.co/",
+        "https://docs.parcl.co/",
+        "https://app.parcl.co/"
+      ],
+      "notes": "Real-estate price exposure / property market synthetic \u2014 verify physical-asset claim carefully",
+      "category": "real_estate",
       "discovery_source": "seed_catalog"
     }
   ]
