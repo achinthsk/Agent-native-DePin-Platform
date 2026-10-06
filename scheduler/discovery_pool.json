@@ -206,7 +206,77 @@
         "app.parcl.co"
       ],
       "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "realx",
+      "display_name": "RealX",
+      "category": "real_estate",
+      "seeds": [
+        "https://realxtoken.finance/en",
+        "https://realxtoken.finance/en/assets",
+        "https://realxtoken.finance/en/investor",
+        "https://static.tokenx.finance/projects/realx/RealX_Whitepaper_Revised_230731_2.pdf",
+        "https://market.sec.or.th/public/ipos/IPOSTD01.aspx?TransID=494728&lang=en"
+      ],
+      "notes": "Coverage test: RealX Investment Token (Thailand SEC-approved) \u2014 tokenized luxury Bangkok real-estate (Park Origin properties)",
+      "aliases": [
+        "realx token",
+        "realxtoken",
+        "RealX Investment Token"
+      ],
+      "domains": [
+        "realxtoken.finance",
+        "static.tokenx.finance",
+        "market.sec.or.th"
+      ],
+      "discovery_source": "manual_curated_list"
+    },
+    {
+      "slug": "wtic",
+      "display_name": "WTIC",
+      "category": "energy",
+      "seeds": [
+        "https://www.energysubstantiation.com/",
+        "https://www.energysubstantiation.com/about",
+        "https://etherscan.io/token/0x709ab533D18e652eCd56423d71c0241A0ee56a3b",
+        "https://app.rwa.xyz/assets/WTIC"
+      ],
+      "notes": "Coverage test: WTIC (Energy Substantiation) \u2014 ERC-20 on Ethereum representing 1:1 physical WTI crude oil via Volumetric Energy Receipts; may not have periodic yield",
+      "aliases": [
+        "WTI Coin",
+        "wti coin",
+        "energy substantiation"
+      ],
+      "domains": [
+        "energysubstantiation.com",
+        "etherscan.io",
+        "app.rwa.xyz"
+      ],
+      "discovery_source": "manual_curated_list"
+    },
+    {
+      "slug": "xu3o8",
+      "display_name": "xU3O8",
+      "category": "mining",
+      "seeds": [
+        "https://uranium.io/en",
+        "https://uranium.io/whitepaper.pdf",
+        "https://app.uranium.io/en/polygon",
+        "https://uranium.io/en/proof-of-reserves"
+      ],
+      "notes": "Coverage test: xU3O8 \u2014 fractional beneficial ownership of physical uranium ore concentrate (U3O8 / yellowcake) in Cameco custody via Archax; may not have periodic yield",
+      "aliases": [
+        "xu3o8",
+        "U3O8",
+        "uranium.io",
+        "yellowcake"
+      ],
+      "domains": [
+        "uranium.io",
+        "app.uranium.io"
+      ],
+      "discovery_source": "manual_curated_list"
     }
   ],
-  "uninvestigated_count": 3
+  "uninvestigated_count": 2
 }

@@ -79,6 +79,9 @@ For candidates already classified **`candidate-for-adapter`**,
 
 | Candidate | Classification | Date investigated | FINDINGS |
 | --- | --- | --- | --- |
+| xU3O8 | `insufficient-information` | 2026-10-06 | [`xu3o8/FINDINGS.md`](./xu3o8/FINDINGS.md) |
+| WTIC | `candidate-for-adapter` | 2026-10-06 | [`wtic/FINDINGS.md`](./wtic/FINDINGS.md) |
+| RealX | `candidate-for-adapter` | 2026-10-06 | [`realx/FINDINGS.md`](./realx/FINDINGS.md) |
 | Parcl | `insufficient-information` | 2026-10-05 | [`parcl/FINDINGS.md`](./parcl/FINDINGS.md) |
 | Agro Digital Token | `insufficient-information` | 2026-10-04 | [`agro-digital-token/FINDINGS.md`](./agro-digital-token/FINDINGS.md) |
 | Toucan Protocol | `insufficient-information` | 2026-10-04 | [`toucan-protocol/FINDINGS.md`](./toucan-protocol/FINDINGS.md) |
