@@ -1,6 +1,6 @@
 {
   "description": "Durable discovery candidate state. Synced from candidates/*/ and storage/ on every discovery run so unmerged pointer advances cannot re-select already-investigated assets.",
-  "updated_at": "2026-10-05",
+  "updated_at": "2026-10-06",
   "recent_categories": [
     "energy",
     "farmland",
@@ -10,7 +10,10 @@
     "mining",
     "other_physical_rwa",
     "farmland",
-    "real_estate"
+    "real_estate",
+    "real_estate",
+    "energy",
+    "mining"
   ],
   "candidates": {
     "aethir": {
@@ -268,6 +271,78 @@
       "investigated": true,
       "physical_class": "physical-rwa",
       "discovery_source": "ranked_pool"
+    },
+    "albion-labs-wressle-1": {
+      "slug": "albion-labs-wressle-1",
+      "display_name": "albion-labs-wressle-1",
+      "category": "other_physical_rwa",
+      "domains": [],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "adapter-ready",
+      "adapter_readiness": "adapter-ready",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true
+    },
+    "realx": {
+      "slug": "realx",
+      "display_name": "RealX",
+      "category": "real_estate",
+      "domains": [
+        "market.sec.or.th",
+        "realxtoken.finance",
+        "static.tokenx.finance"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "token-data-only"
+    },
+    "wtic": {
+      "slug": "wtic",
+      "display_name": "WTIC",
+      "category": "energy",
+      "domains": [
+        "app.rwa.xyz",
+        "energysubstantiation.com",
+        "etherscan.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "candidate-for-adapter",
+      "state": "candidate-for-adapter",
+      "has_findings": true,
+      "has_adapter_spec": true,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match",
+      "adapter_readiness": "token-data-only"
+    },
+    "xu3o8": {
+      "slug": "xu3o8",
+      "display_name": "xU3O8",
+      "category": "mining",
+      "domains": [
+        "app.uranium.io",
+        "uranium.io"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "physical-rwa",
+      "discovery_source": "backlog_match"
     }
   }
 }
