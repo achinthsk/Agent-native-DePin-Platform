@@ -1,6 +1,6 @@
 {
   "description": "Durable discovery candidate state. Synced from candidates/*/ and storage/ on every discovery run so unmerged pointer advances cannot re-select already-investigated assets.",
-  "updated_at": "2026-10-05",
+  "updated_at": "2026-10-10",
   "recent_categories": [
     "energy",
     "farmland",
@@ -10,6 +10,7 @@
     "mining",
     "other_physical_rwa",
     "farmland",
+    "real_estate",
     "real_estate"
   ],
   "candidates": {
@@ -267,6 +268,24 @@
       "has_adapter_spec": false,
       "investigated": true,
       "physical_class": "physical-rwa",
+      "discovery_source": "ranked_pool"
+    },
+    "realio": {
+      "slug": "realio",
+      "display_name": "Realio Network",
+      "category": "real_estate",
+      "domains": [
+        "docs.realio.network",
+        "realio.network"
+      ],
+      "aliases": [],
+      "token_addresses": [],
+      "findings_classification": "insufficient-information",
+      "state": "researched",
+      "has_findings": true,
+      "has_adapter_spec": false,
+      "investigated": true,
+      "physical_class": "unclear",
       "discovery_source": "ranked_pool"
     }
   }
