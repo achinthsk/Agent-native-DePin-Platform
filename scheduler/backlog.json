@@ -1,6 +1,6 @@
 {
   "description": "Ordered discovery backlog. One named candidate per scheduled cycle \u2014 not bare categories.",
-  "next_index": 15,
+  "next_index": 16,
   "candidates": [
     {
       "slug": "spacecoin",
@@ -179,6 +179,18 @@
         "https://app.parcl.co/"
       ],
       "notes": "Real-estate price exposure / property market synthetic \u2014 verify physical-asset claim carefully",
+      "category": "real_estate",
+      "discovery_source": "seed_catalog"
+    },
+    {
+      "slug": "realio",
+      "display_name": "Realio Network",
+      "seeds": [
+        "https://realio.network/",
+        "https://docs.realio.network/",
+        "https://realio.network/ecosystem"
+      ],
+      "notes": "Real-world asset issuance network focused on real estate / alternatives",
       "category": "real_estate",
       "discovery_source": "seed_catalog"
     }
